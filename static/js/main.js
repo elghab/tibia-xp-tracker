@@ -9,18 +9,40 @@ async function loadMetrics() {
   document.getElementById("info").innerText =
     `${data.character.vocation} • Level ${data.character.level} • ${data.character.world}`;
 
-    const title = document.getElementById("dailyTitle");
-const goalLevel = data.config.goal_level;
-
-title.innerText = goalLevel
-  ? `Meta diária - Meta Nv. ${goalLevel}`
-  : "Meta diária";
-
-
   document.getElementById("xp").innerText = data.xp_current.toLocaleString();
   document.getElementById("remaining").innerText = data.xp_remaining.toLocaleString();
   document.getElementById("avg").innerText = data.average_xp.toLocaleString();
   document.getElementById("eta").innerText = data.days_estimate ? `${data.days_estimate} dias` : "—";
+
+  // TÍTULO: Meta diária - Meta Nv. X
+  const dailyTitle = document.getElementById("dailyTitle");
+  const goalLevel = data.config.goal_level;
+  dailyTitle.innerText = goalLevel ? `Meta diária - Meta Nv. ${goalLevel}` : "Meta diária";
+
+  // Se nível atual > meta: esconde barra e infos; mostra aviso
+  const currentLevel = data.character.level;
+  const warning = document.getElementById("goalWarning");
+  const progressBar = document.querySelector(".progress-bar");
+  const dailyInfoLine = document.getElementById("dailyInfoLine");
+  const dailyPercent = document.getElementById("dailyPercent");
+
+  const invalidGoal = goalLevel && Number(currentLevel) > Number(goalLevel);
+
+  if (invalidGoal) {
+    if (progressBar) progressBar.style.display = "none";
+    if (dailyInfoLine) dailyInfoLine.style.display = "none";
+    if (dailyPercent) dailyPercent.style.display = "none";
+    warning.style.display = "block";
+
+    // não atualiza barra nesse caso
+    renderChart(data.daily_log);
+    return;
+  } else {
+    if (progressBar) progressBar.style.display = "block";
+    if (dailyInfoLine) dailyInfoLine.style.display = "flex";
+    if (dailyPercent) dailyPercent.style.display = "inline";
+    warning.style.display = "none";
+  }
 
   // META DIÁRIA ATUALIZADA
   const fill = document.getElementById("progressFill");
@@ -91,24 +113,6 @@ async function loadXpTable() {
   xpTable = await res.json();
 }
 
-function populateGoalLevelSelect(selectedLevel) {
-  const sel = document.getElementById("cfgGoalLevel");
-  sel.innerHTML = "";
-
-  xpTable.forEach(row => {
-    const opt = document.createElement("option");
-    opt.value = row.level;
-    opt.textContent = `Level ${row.level}`;
-    sel.appendChild(opt);
-  });
-
-  if (selectedLevel !== null && selectedLevel !== undefined) {
-    sel.value = String(selectedLevel);
-  }
-
-  updateGoalPreview();
-}
-
 function updateGoalPreview() {
   const sel = document.getElementById("cfgGoalLevel");
   const level = parseInt(sel.value);
@@ -118,16 +122,58 @@ function updateGoalPreview() {
   el.textContent = row ? `XP total no nível: ${Number(row.experience).toLocaleString()}` : "";
 }
 
+function populateGoalLevelSelect(selectedLevel, currentLevel) {
+  const sel = document.getElementById("cfgGoalLevel");
+  sel.innerHTML = "";
+
+  xpTable.forEach(row => {
+    const opt = document.createElement("option");
+    opt.value = row.level;
+    opt.textContent = `Level ${row.level}`;
+
+    // bloqueia escolher nível meta abaixo do level atual
+    if (currentLevel && Number(row.level) < Number(currentLevel)) {
+      opt.disabled = true;
+    }
+
+    sel.appendChild(opt);
+  });
+
+  // Se nível selecionado não for válido, escolhe o menor >= currentLevel
+  if (currentLevel) {
+    const firstValid = xpTable.find(r => Number(r.level) >= Number(currentLevel));
+    const selectedIsValid = selectedLevel !== null && selectedLevel !== undefined && Number(selectedLevel) >= Number(currentLevel);
+
+    if (!selectedIsValid && firstValid) {
+      selectedLevel = firstValid.level;
+    }
+  }
+
+  if (selectedLevel !== null && selectedLevel !== undefined) {
+    sel.value = String(selectedLevel);
+  }
+
+  updateGoalPreview();
+}
+
 /* CONFIG MODAL */
 async function openSettings() {
-  const res = await fetch("/config");
-  const cfg = await res.json();
+  // precisa do level atual para travar o seletor
+  const [cfgRes, metricsRes] = await Promise.all([
+    fetch("/config"),
+    fetch("/metrics")
+  ]);
+
+  const cfg = await cfgRes.json();
+  const metrics = await metricsRes.json();
 
   cfgName.value = cfg.char_name;
   cfgStart.value = cfg.xp_start;
   cfgDaily.value = cfg.daily_goal;
 
   await loadXpTable();
+
+  const currentLevel = metrics.character.level;
 
   // Prioridade: goal_level salvo; se não tiver, tenta achar por xp_goal; senão usa o último level disponível
   let selectedLevel = cfg.goal_level;
@@ -137,9 +183,8 @@ async function openSettings() {
     selectedLevel = match ? match.level : xpTable[xpTable.length - 1].level;
   }
 
-  populateGoalLevelSelect(selectedLevel);
+  populateGoalLevelSelect(selectedLevel, currentLevel);
 
-  // garante listener (sem duplicar)
   const sel = document.getElementById("cfgGoalLevel");
   sel.onchange = updateGoalPreview;
 
@@ -159,7 +204,7 @@ async function saveSettings() {
     body: JSON.stringify({
       char_name: cfgName.value,
       xp_start: cfgStart.value,
-      goal_level: goalLevel,     // backend converte para xp_goal
+      goal_level: goalLevel,
       daily_goal: cfgDaily.value
     })
   });

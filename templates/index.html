@@ -52,11 +52,16 @@
         <span id="dailyPercent" style="color: var(--muted); font-size: 14px;">0%</span>
       </div>
 
+      <!-- Mensagem quando a meta estiver abaixo do level atual -->
+      <div id="goalWarning" style="display:none; margin-top:10px; color: var(--accent); font-weight: bold;">
+        Nível meta abaixo do nível atual do personagem, por gentileza selecione novo nível meta nas configurações.
+      </div>
+
       <div class="progress-bar">
         <div id="progressFill" class="fill"></div>
       </div>
 
-      <div style="display:flex; justify-content: space-between; margin-top: 6px; font-size: 14px;">
+      <div id="dailyInfoLine" style="display:flex; justify-content: space-between; margin-top: 6px; font-size: 14px;">
         <span id="dailyText">0 / 0 XP</span>
         <span id="dailyRemaining" style="color: var(--muted);">0 XP para 100%</span>
       </div>
