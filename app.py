@@ -27,6 +27,10 @@ login_manager = LoginManager()
 login_manager.login_view = "index"
 login_manager.init_app(app)
 
+login_manager.login_message = "Faça login para acessar esta página."
+login_manager.login_message_category = "error"
+
+
 XP_TABLE_FILE = os.path.join(app.root_path, "data", "experience_table_tibia.json")
 
 # =========================
