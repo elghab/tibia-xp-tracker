@@ -1,6 +1,8 @@
 let chart = null;
 let xpTableCache = null;
 
+window.__originalCharName = null;
+
 /* =========================
    Loading overlay
 ========================= */
@@ -38,6 +40,21 @@ function showToast(message, type = "info", ms = 2500) {
 function sanitizeInt(v) {
   const digits = String(v ?? "").replace(/\D/g, "");
   return digits ? parseInt(digits, 10) : 0;
+}
+
+function normalizeName(s) {
+  return String(s || "").trim().toLowerCase();
+}
+
+function updateCharChangeWarning() {
+  const warn = document.getElementById("charChangeWarning");
+  const cfgName = document.getElementById("cfgName");
+  if (!warn || !cfgName) return;
+
+  const changed = window.__originalCharName !== null &&
+    normalizeName(cfgName.value) !== normalizeName(window.__originalCharName);
+
+  warn.style.display = changed ? "block" : "none";
 }
 
 /* =========================
@@ -79,18 +96,13 @@ function populateGoalLevelSelect(currentLevel) {
     const opt = document.createElement("option");
     opt.value = String(lvl);
     opt.textContent = `Level ${lvl}`;
-
-    // desabilita <= level atual
     if (lvl <= Number(currentLevel)) opt.disabled = true;
-
     sel.appendChild(opt);
   });
 
-  // default: currentLevel + 1
   const desired = Number(currentLevel) + 1;
   sel.value = String(desired);
 
-  // fallback se desired não existir
   if (!sel.value) {
     const firstValid = [...sel.options].find(o => o.value && !o.disabled);
     if (firstValid) sel.value = firstValid.value;
@@ -132,7 +144,30 @@ async function loadMetrics() {
     document.getElementById("avg").innerText = Number(data.average_xp).toLocaleString("pt-BR");
     document.getElementById("eta").innerText = data.days_estimate ? `${data.days_estimate} dias` : "—";
 
-    // meta diária
+    const dailyTitle = document.getElementById("dailyTitle");
+    if (dailyTitle) {
+      const goalLevel = data.config.goal_level;
+      dailyTitle.innerText = goalLevel ? `Meta diária - Meta Nv. ${goalLevel}` : "Meta diária";
+    }
+
+    const warning = document.getElementById("goalWarning");
+    const reached = document.getElementById("goalReached");
+
+    const goalLevel = data.config.goal_level;
+    const invalidGoal = goalLevel && Number(data.character.level) > Number(goalLevel);
+    const goalReached = goalLevel && Number(data.xp_remaining) <= 0;
+
+    if (invalidGoal) {
+      if (warning) warning.style.display = "block";
+      if (reached) reached.style.display = "none";
+    } else if (goalReached) {
+      if (warning) warning.style.display = "none";
+      if (reached) reached.style.display = "block";
+    } else {
+      if (warning) warning.style.display = "none";
+      if (reached) reached.style.display = "none";
+    }
+
     const fill = document.getElementById("progressFill");
     fill.style.width = `${data.daily_progress}%`;
     fill.className = data.daily_progress >= 100 ? "fill success" : "fill";
@@ -242,7 +277,6 @@ async function openSettings() {
       return;
     }
 
-    // IDs globais (por causa do seu HTML atual)
     const cfgName = document.getElementById("cfgName");
     const cfgStart = document.getElementById("cfgStart");
     const cfgDaily = document.getElementById("cfgDaily");
@@ -252,24 +286,24 @@ async function openSettings() {
     cfgStart.value = cfg.xp_start;
     cfgDaily.value = cfg.daily_goal;
 
+    // guarda o nome original para comparar depois
+    window.__originalCharName = cfg.char_name;
+    updateCharChangeWarning();
+
     await loadXpTable();
 
-    // monta o select e aplica mínimos ao abrir
     showLoading("Buscando personagem...");
     const currentLevel = await fetchCharacterLevelByName(cfgName.value.trim());
 
     const xpMin = xpForLevelFromCache(currentLevel);
     if (xpMin !== null) {
       cfgStart.min = String(xpMin);
-
-      // se tiver algo inválido, corrige; mas aqui não força sempre
       const cur = sanitizeInt(cfgStart.value);
       if (!cur || cur < xpMin) cfgStart.value = xpMin;
     }
 
     populateGoalLevelSelect(currentLevel);
 
-    // tenta manter o goal_level salvo, se for válido (senão fica level+1)
     if (cfg.goal_level && Number(cfg.goal_level) > Number(currentLevel)) {
       goalSel.value = String(cfg.goal_level);
       updateGoalPreview();
@@ -277,9 +311,11 @@ async function openSettings() {
 
     goalSel.onchange = updateGoalPreview;
 
-    // bind do blur no nome (uma vez)
+    // bind change/typing (para mostrar aviso) + blur (para buscar char)
     if (cfgName.dataset.bound !== "1") {
       cfgName.dataset.bound = "1";
+
+      cfgName.addEventListener("input", updateCharChangeWarning);
 
       cfgName.addEventListener("blur", async () => {
         const newName = cfgName.value.trim();
@@ -289,7 +325,6 @@ async function openSettings() {
         try {
           const lvl = await fetchCharacterLevelByName(newName);
 
-          // 1) XP inicial vira o XP do nível atual (força trocar como você quer no exemplo)
           const xpMin2 = xpForLevelFromCache(lvl);
           if (xpMin2 === null) {
             showToast("Tabela de XP não tem esse nível.", "error");
@@ -297,9 +332,8 @@ async function openSettings() {
           }
 
           cfgStart.min = String(xpMin2);
-          cfgStart.value = xpMin2; // <- força atualização ao trocar char (Docito -> Root)
+          cfgStart.value = xpMin2;
 
-          // 2) nível meta vira level+1 e desabilita <= level
           populateGoalLevelSelect(lvl);
           goalSel.value = String(lvl + 1);
           updateGoalPreview();
@@ -324,13 +358,23 @@ function closeSettings() {
 }
 
 async function saveSettings() {
+  const cfgName = document.getElementById("cfgName");
+  const cfgStart = document.getElementById("cfgStart");
+  const cfgDaily = document.getElementById("cfgDaily");
+  const goalSel = document.getElementById("cfgGoalLevel");
+
+  const changed = window.__originalCharName !== null &&
+    normalizeName(cfgName.value) !== normalizeName(window.__originalCharName);
+
+  if (changed) {
+    const ok = confirm(
+      "Ao salvar com um personagem diferente, o histórico de XP será zerado.\n\nDeseja continuar?"
+    );
+    if (!ok) return;
+  }
+
   showLoading("Salvando...");
   try {
-    const cfgName = document.getElementById("cfgName");
-    const cfgStart = document.getElementById("cfgStart");
-    const cfgDaily = document.getElementById("cfgDaily");
-    const goalSel = document.getElementById("cfgGoalLevel");
-
     const res = await fetch("/config", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
@@ -348,9 +392,13 @@ async function saveSettings() {
       return;
     }
 
+    // atualiza "original" após salvar
+    window.__originalCharName = cfgName.value.trim();
+    updateCharChangeWarning();
+
     closeSettings();
     await loadMetrics();
-    showToast("Configurações salvas.", "success");
+    showToast(changed ? "Configurações salvas. Histórico zerado." : "Configurações salvas.", "success");
   } catch (e) {
     showToast("Falha ao salvar.", "error");
   } finally {

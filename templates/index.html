@@ -61,8 +61,14 @@
         <span id="dailyPercent" style="color: var(--muted); font-size: 14px;">0%</span>
       </div>
 
+      <!-- aviso: meta inválida -->
       <div id="goalWarning" style="display:none; margin-top:10px; color: var(--accent); font-weight: bold;">
         Nível meta abaixo do nível atual do personagem, por gentileza selecione novo nível meta nas configurações.
+      </div>
+
+      <!-- ✅ aviso: meta batida -->
+      <div id="goalReached" style="display:none; margin-top:10px; color: var(--positive); font-weight: bold;">
+        Você bateu a meta! Selecione uma nova no menu de configurações.
       </div>
 
       <div class="progress-bar">
@@ -87,7 +93,7 @@
   <!-- TOAST -->
   <div id="toast" class="toast" aria-live="polite"></div>
 
-  <!-- ✅ OVERLAY LOADING (para evitar “quebra” quando troca char) -->
+  <!-- OVERLAY LOADING -->
   <div id="loadingOverlay" class="loading-overlay" aria-busy="false" style="display:none;">
     <div class="loading-box">
       <div class="spinner"></div>
@@ -102,13 +108,16 @@
 
       <label>Nome do char</label>
       <input id="cfgName" type="text" autocomplete="off" />
+      
+<div id="charChangeWarning"
+     style="display:none; margin-top:10px; color: var(--accent); font-weight:bold;">
+  Ao trocar o personagem e salvar, o histórico de XP será zerado.
+</div>
 
       <label>XP inicial</label>
-      <!-- ✅ editável, mas o JS vai colocar .min e corrigir se estiver abaixo -->
       <input id="cfgStart" type="number" />
 
       <label>Nível meta</label>
-      <!-- ✅ select usado pelo JS -->
       <select id="cfgGoalLevel"></select>
       <small id="goalXpPreview" style="color: var(--muted); display:block; margin-top:6px;"></small>
 
