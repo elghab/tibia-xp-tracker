@@ -10,7 +10,7 @@
 <body>
   <div class="header">
     <button class="settings-btn" onclick="openSettings()">⚙</button>
-    <h1 id="charName">Roth Lion</h1>
+    <h1 id="charName">—</h1>
     <div class="subtitle" id="info">Carregando...</div>
   </div>
 
@@ -39,10 +39,17 @@
 
     <div class="entry">
       <h3>Adicionar XP</h3>
+
       <div class="entry-box">
-        <input type="number" id="xpInput" placeholder="Ex: 1234567" />
-        <button onclick="addXP()">Adicionar</button>
+        <input type="text" id="xpInput" inputmode="numeric" placeholder="Ex: 1.000.000" />
+        <button id="xpSubmitBtn" onclick="addXP()">Adicionar</button>
       </div>
+
+      <label class="death-toggle">
+        <input type="checkbox" id="deathToggle" onchange="updateXpMode()" />
+        <span class="skull">☠️</span>
+        Morte (retirar XP)
+      </label>
     </div>
 
     <!-- META DIÁRIA ATUALIZADA -->
@@ -52,7 +59,6 @@
         <span id="dailyPercent" style="color: var(--muted); font-size: 14px;">0%</span>
       </div>
 
-      <!-- Mensagem quando a meta estiver abaixo do level atual -->
       <div id="goalWarning" style="display:none; margin-top:10px; color: var(--accent); font-weight: bold;">
         Nível meta abaixo do nível atual do personagem, por gentileza selecione novo nível meta nas configurações.
       </div>
@@ -70,11 +76,69 @@
     <div class="chart-section">
       <canvas id="chart"></canvas>
     </div>
+
+    <!-- MÉTRICAS EXTRAS -->
+    <div class="extra-metrics">
+      <h3>Estatísticas</h3>
+
+      <div class="stats-grid">
+        <div class="card">
+          <span>XP no mês</span>
+          <h2 id="xpMonth">—</h2>
+          <div class="subtitle" id="xpMonthLabel"></div>
+        </div>
+
+        <div class="card">
+          <span>XP no ano</span>
+          <h2 id="xpYear">—</h2>
+          <div class="subtitle" id="xpYearLabel"></div>
+        </div>
+
+        <div class="card">
+          <span>Melhor dia</span>
+          <h2 id="bestDayXp">—</h2>
+          <div class="subtitle" id="bestDayDate"></div>
+        </div>
+
+        <div class="card">
+          <span>Pior dia</span>
+          <h2 id="worstDayXp">—</h2>
+          <div class="subtitle" id="worstDayDate"></div>
+        </div>
+
+        <div class="card">
+          <span>Melhor mês</span>
+          <h2 id="bestMonthXp">—</h2>
+          <div class="subtitle" id="bestMonthKey"></div>
+        </div>
+
+        <div class="card">
+          <span>Dias acima da meta</span>
+          <h2 id="daysHitGoal">—</h2>
+          <div class="subtitle">Considera somente XP positiva do dia</div>
+        </div>
+
+        <div class="card">
+          <span>Streak atual</span>
+          <h2 id="currentStreak">—</h2>
+          <div class="subtitle">Dias seguidos batendo a meta</div>
+        </div>
+
+        <div class="card">
+          <span>Projeção (mediana 14d)</span>
+          <h2 id="median14d">—</h2>
+          <div class="subtitle" id="medianEta">—</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="footer">
     Tibia XP Tracker • Feito de Tibiano para Tibiano
   </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast" aria-live="polite"></div>
 
   <!-- MODAL CONFIG -->
   <div id="settingsModal" class="modal">
@@ -94,9 +158,15 @@
       <label>Meta diária</label>
       <input id="cfgDaily" type="number" />
 
-      <div class="modal-actions">
-        <button onclick="closeSettings()">Cancelar</button>
-        <button class="save" onclick="saveSettings()">Salvar</button>
+      <div class="modal-actions" style="justify-content: space-between;">
+        <button onclick="resetXpHistory()" style="background: transparent; border: 1px solid var(--accent); color: var(--accent);">
+          Zerar histórico
+        </button>
+
+        <div style="display:flex; gap:10px;">
+          <button onclick="closeSettings()">Cancelar</button>
+          <button id="saveSettingsBtn" class="save" onclick="saveSettings()">Salvar</button>
+        </div>
       </div>
     </div>
   </div>

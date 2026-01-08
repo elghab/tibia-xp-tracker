@@ -1,75 +1,104 @@
-from flask import Flask, render_template, request, jsonify
-import json
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+
 import os
+import json
 import requests
 from datetime import date
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
-DATA_FILE = "data/xp_log.json"
-CONFIG_FILE = "data/config.json"
+# SQLite local (arquivo). Depois você troca DATABASE_URL para Postgres.
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "DATABASE_URL",
+    "sqlite:///" + os.path.join(app.root_path, "data", "app.db")
+)
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
+
+login_manager = LoginManager()
+login_manager.login_view = "index"
+login_manager.init_app(app)
 
 XP_TABLE_FILE = os.path.join(app.root_path, "data", "experience_table_tibia.json")
 
 
-# ===== XP TABLE =====
+# =========================
+# Models
+# =========================
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+
+    username = db.Column(db.String(40), unique=True, nullable=False, index=True)
+    email = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+
+    characters = db.relationship(
+        "Character",
+        backref="user",
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
+
+    def set_password(self, password_plain: str):
+        self.password_hash = generate_password_hash(password_plain)
+
+    def check_password(self, password_plain: str) -> bool:
+        return check_password_hash(self.password_hash, password_plain)
+
+
+class Character(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+
+    char_name = db.Column(db.String(80), nullable=False)
+    xp_start = db.Column(db.Integer, nullable=False, default=0)
+    xp_goal = db.Column(db.Integer, nullable=False, default=0)
+    daily_goal = db.Column(db.Integer, nullable=False, default=0)
+    goal_level = db.Column(db.Integer, nullable=True)
+
+    logs = db.relationship(
+        "XpLog",
+        backref="character",
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
+
+
+class XpLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False, index=True)
+
+    date = db.Column(db.String(10), nullable=False)  # YYYY-MM-DD
+    xp = db.Column(db.Integer, nullable=False, default=0)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+# =========================
+# Helpers
+# =========================
+def ensure_data_dir():
+    os.makedirs(os.path.join(app.root_path, "data"), exist_ok=True)
+
 def load_xp_table():
     with open(XP_TABLE_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
     return data["experience_table"]
 
 def xp_for_level(level: int) -> int:
-    table = load_xp_table()
-    for row in table:
+    for row in load_xp_table():
         if int(row["level"]) == int(level):
             return int(row["experience"])
     raise ValueError("Level não encontrado na tabela")
 
-@app.route("/xp-table")
-def xp_table():
-    return jsonify(load_xp_table())
-
-# ===== CONFIG =====
-def load_config():
-    if not os.path.exists(CONFIG_FILE):
-        return {
-            "char_name": "Roth Lion",
-            "xp_start": 777694113,
-            "xp_goal": 1050779800,
-            "daily_goal": 4500000,
-            "goal_level": None
-        }
-
-    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-        cfg = json.load(f)
-
-    # compatibilidade com configs antigos
-    if "goal_level" not in cfg:
-        cfg["goal_level"] = None
-
-    return cfg
-
-def save_config(cfg):
-    os.makedirs("data", exist_ok=True)
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=4, ensure_ascii=False)
-
-# ===== XP LOG =====
-def load_log():
-    if not os.path.exists(DATA_FILE):
-        return []
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return []
-
-def save_log(data):
-    os.makedirs("data", exist_ok=True)
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-
-# ===== TIBIA API =====
 def get_character_info(name):
     url = f"https://api.tibiadata.com/v4/character/{name.replace(' ', '%20')}"
     r = requests.get(url, timeout=10)
@@ -80,25 +109,122 @@ def get_character_info(name):
         "world": char["world"]
     }
 
-# ===== ROTAS =====
+def get_current_character() -> Character:
+    # Por enquanto: 1 personagem por conta (o primeiro).
+    return Character.query.filter_by(user_id=current_user.id).first()
+
+
+# cria tabelas ao iniciar (modo simples)
+with app.app_context():
+    ensure_data_dir()
+    db.create_all()
+
+
+# =========================
+# Rotas públicas
+# =========================
 @app.route("/")
 def index():
-    """Página inicial Yonexus"""
     return render_template("home.html")
 
+# IMPORTANTE: público para funcionar no cadastro (select de níveis)
+@app.route("/xp-table")
+def xp_table_public():
+    return jsonify(load_xp_table())
+
+@app.route("/register", methods=["POST"])
+def register():
+    username = request.form.get("username", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
+
+    char_name = request.form.get("char_name", "").strip()
+    xp_start = request.form.get("xp_start", "0")
+    goal_level = request.form.get("goal_level", "")
+    daily_goal = request.form.get("daily_goal", "0")
+
+    if not username or not email or not password:
+        flash("Preencha usuário, email e senha.")
+        return redirect(url_for("index"))
+
+    if not char_name:
+        flash("Informe o nome do personagem.")
+        return redirect(url_for("index"))
+
+    if User.query.filter((User.username == username) | (User.email == email)).first():
+        flash("Usuário ou email já cadastrado.")
+        return redirect(url_for("index"))
+
+    try:
+        goal_level_int = int(goal_level) if goal_level else None
+        xp_goal = xp_for_level(goal_level_int) if goal_level_int else 0
+    except Exception:
+        flash("Nível meta inválido.")
+        return redirect(url_for("index"))
+
+    user = User(username=username, email=email)
+    user.set_password(password)
+
+    ch = Character(
+        char_name=char_name,
+        xp_start=int(xp_start) if xp_start else 0,
+        goal_level=goal_level_int,
+        xp_goal=int(xp_goal),
+        daily_goal=int(daily_goal) if daily_goal else 0,
+    )
+    user.characters.append(ch)
+
+    db.session.add(user)
+    db.session.commit()
+
+    login_user(user)
+    return redirect(url_for("xp_tracker"))
+
+@app.route("/login", methods=["POST"])
+def login():
+    username_or_email = request.form.get("username", "").strip()
+    password = request.form.get("password", "")
+
+    user = User.query.filter(
+        (User.username == username_or_email) | (User.email == username_or_email.lower())
+    ).first()
+
+    if not user or not user.check_password(password):
+        flash("Login inválido.")
+        return redirect(url_for("index"))
+
+    login_user(user)
+    return redirect(url_for("xp_tracker"))
+
+@app.route("/logout", methods=["POST"])
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("index"))
+
+
+# =========================
+# Rotas do app (protegidas)
+# =========================
 @app.route("/xp-tracker")
+@login_required
 def xp_tracker():
-    """Ferramenta XP Tracker"""
     return render_template("index.html")
 
 @app.route("/metrics")
+@login_required
 def metrics():
-    cfg = load_config()
-    log = load_log()
-    info = get_character_info(cfg["char_name"])
+    ch = get_current_character()
+    if not ch:
+        return jsonify({"error": "Nenhum personagem cadastrado."}), 400
 
-    xp_total = cfg["xp_start"] + sum(d["xp"] for d in log)
-    xp_remaining = max(0, cfg["xp_goal"] - xp_total)
+    log_rows = XpLog.query.filter_by(character_id=ch.id).order_by(XpLog.date.asc()).all()
+    log = [{"date": r.date, "xp": r.xp} for r in log_rows]
+
+    info = get_character_info(ch.char_name)
+
+    xp_total = ch.xp_start + sum(d["xp"] for d in log)
+    xp_remaining = max(0, ch.xp_goal - xp_total)
 
     positives = [d["xp"] for d in log if d["xp"] > 0]
     avg_xp = sum(positives) / len(positives) if positives else 0
@@ -106,10 +232,16 @@ def metrics():
 
     today = date.today().isoformat()
     today_xp = next((d["xp"] for d in log if d["date"] == today), 0)
-    daily_progress = min(100, round((today_xp / cfg["daily_goal"]) * 100, 1))
+    daily_progress = min(100, round((today_xp / ch.daily_goal) * 100, 1)) if ch.daily_goal > 0 else 0
 
     return jsonify({
-        "config": cfg,
+        "config": {
+            "char_name": ch.char_name,
+            "xp_start": ch.xp_start,
+            "xp_goal": ch.xp_goal,
+            "daily_goal": ch.daily_goal,
+            "goal_level": ch.goal_level
+        },
         "character": info,
         "xp_current": xp_total,
         "xp_remaining": xp_remaining,
@@ -121,54 +253,70 @@ def metrics():
     })
 
 @app.route("/add_xp", methods=["POST"])
+@login_required
 def add_xp():
+    ch = get_current_character()
+    if not ch:
+        return jsonify({"error": "Nenhum personagem cadastrado."}), 400
+
     xp = int(request.json["xp"])
     today = date.today().isoformat()
-    log = load_log()
 
-    for entry in log:
-        if entry["date"] == today:
-            entry["xp"] += xp
-            break
+    row = XpLog.query.filter_by(character_id=ch.id, date=today).first()
+    if row:
+        row.xp += xp
     else:
-        log.append({"date": today, "xp": xp})
+        db.session.add(XpLog(character_id=ch.id, date=today, xp=xp))
 
-    save_log(log)
+    db.session.commit()
+    return jsonify({"status": "ok"})
+
+@app.route("/reset-xp-history", methods=["POST"])
+@login_required
+def reset_xp_history():
+    ch = get_current_character()
+    if not ch:
+        return jsonify({"error": "Nenhum personagem cadastrado."}), 400
+
+    XpLog.query.filter_by(character_id=ch.id).delete()
+    db.session.commit()
     return jsonify({"status": "ok"})
 
 @app.route("/config", methods=["GET", "POST"])
+@login_required
 def config():
+    ch = get_current_character()
+    if not ch:
+        return jsonify({"error": "Nenhum personagem cadastrado."}), 400
+
     if request.method == "GET":
-        return jsonify(load_config())
+        return jsonify({
+            "char_name": ch.char_name,
+            "xp_start": ch.xp_start,
+            "xp_goal": ch.xp_goal,
+            "daily_goal": ch.daily_goal,
+            "goal_level": ch.goal_level
+        })
 
     data = request.json
-    cfg_current = load_config()
+
+    ch.char_name = data.get("char_name", ch.char_name)
+    ch.xp_start = int(data.get("xp_start", ch.xp_start))
+    ch.daily_goal = int(data.get("daily_goal", ch.daily_goal))
 
     goal_level = data.get("goal_level", None)
-    xp_goal = data.get("xp_goal", None)
-
-    # Se vier nível meta, converte para XP
     if goal_level is not None and str(goal_level).strip() != "":
-        goal_level = int(goal_level)
-        xp_goal = xp_for_level(goal_level)
-    else:
-        goal_level = None
-        xp_goal = int(xp_goal) if xp_goal is not None else cfg_current["xp_goal"]
+        ch.goal_level = int(goal_level)
+        ch.xp_goal = xp_for_level(ch.goal_level)
 
-    save_config({
-        "char_name": data["char_name"],
-        "xp_start": int(data["xp_start"]),
-        "xp_goal": int(xp_goal),
-        "daily_goal": int(data["daily_goal"]),
-        "goal_level": goal_level
-    })
-
+    db.session.commit()
     return jsonify({"status": "saved"})
 
 @app.route("/bestiary")
+@login_required
 def bestiary():
-    """Página Bestiário"""
     return render_template("bestiary.html")
+
 
 if __name__ == "__main__":
     app.run(debug=True)
