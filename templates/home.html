@@ -5,112 +5,92 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Yonexus - Tibia Fansite</title>
   <meta name="description" content="Yonexus - Tibia Fansite brasileiro com notícias, rankings e ferramentas Tibia." />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <style>
-    :root { --bg:#020617; --border:#1e293b; --text:#e5e7eb; --muted:#94a3b8; --accent:#facc15; }
-    *{ box-sizing:border-box; margin:0; padding:0; }
-    body{ font-family:Inter,sans-serif; background:#020617; color:var(--text); }
+    :root{
+      --bg:#020617;--border:#1e293b;--text:#e5e7eb;--muted:#94a3b8;--accent:#facc15;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,sans-serif;background:var(--bg);color:var(--text)}
 
-    .navbar{ position:fixed; top:0; width:100%; padding:1.5rem 5%;
-      background:rgba(2,6,23,.95); border-bottom:1px solid var(--border);
-      display:flex; justify-content:space-between; align-items:center; z-index:1000; }
-    .logo{ font-size:2rem; font-weight:700; background:linear-gradient(135deg,var(--accent),#eab308);
-      -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-    .cta-btn{ padding:12px 28px; border:none; border-radius:50px; font-weight:600; cursor:pointer;
-      background:linear-gradient(135deg,var(--accent),#eab308); color:#000; }
+    .navbar{
+      position:fixed;top:0;width:100%;padding:1.5rem 5%;
+      background:rgba(2,6,23,.95);border-bottom:1px solid var(--border);
+      display:flex;justify-content:space-between;align-items:center;z-index:1000;
+    }
+    .logo{
+      font-size:2rem;font-weight:700;
+      background:linear-gradient(135deg,var(--accent),#eab308);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    }
+    .cta-btn{
+      padding:12px 28px;border:none;border-radius:50px;font-weight:700;cursor:pointer;
+      background:linear-gradient(135deg,var(--accent),#eab308);color:#020617;
+    }
 
-    .hero{ min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center; padding:0 5%; }
-    .hero h1{ font-size:4rem; background:linear-gradient(135deg,var(--accent),#fff);
-      -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-    .hero p{ color:var(--muted); margin-top:1rem; font-size:1.2rem; }
-    .hero-actions{ margin-top:3rem; display:flex; gap:1.5rem; justify-content:center; flex-wrap:wrap; }
-    .action-card{ min-width:200px; padding:1.5rem 2rem; border-radius:20px; background:rgba(2,6,23,.7);
-      border:1px solid var(--border); color:var(--text); text-decoration:none; text-align:center; font-weight:600; transition:.3s; }
-    .action-card span{ font-size:2rem; display:block; margin-bottom:.6rem; }
-    .action-card:hover{ transform:translateY(-6px); border-color:var(--accent); box-shadow:0 15px 35px rgba(250,204,21,.25); color:var(--accent); }
+    .hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 5%}
+    .hero h1{
+      font-size:4rem;background:linear-gradient(135deg,var(--accent),#fff);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    }
+    .hero p{color:var(--muted);margin-top:1rem;font-size:1.2rem}
 
-    .auth-modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(10px);
-      z-index:2000; align-items:center; justify-content:center; padding:20px; }
+    .hero-actions{margin-top:3rem;display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap}
+    .action-card{
+      min-width:200px;padding:1.5rem 2rem;border-radius:20px;
+      background:rgba(2,6,23,.7);border:1px solid var(--border);
+      color:var(--text);text-decoration:none;text-align:center;font-weight:700;transition:.3s;
+    }
+    .action-card span{font-size:2rem;display:block;margin-bottom:.6rem}
+    .action-card:hover{
+      transform:translateY(-6px);border-color:var(--accent);
+      box-shadow:0 15px 35px rgba(250,204,21,.25);color:var(--accent);
+    }
 
-    /* modal rolável */
+    .auth-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);z-index:2000;align-items:center;justify-content:center;padding:20px}
     .auth-container{
-      width:100%;
-      max-width:520px;
-      background:#020617;
-      border:2px solid var(--border);
-      border-radius:20px;
-      overflow:hidden;
-      max-height:90vh;
-      display:flex;
-      flex-direction:column;
+      width:100%;max-width:520px;background:#020617;border:2px solid var(--border);
+      border-radius:20px;overflow:hidden;max-height:90vh;display:flex;flex-direction:column
     }
-    .auth-header{ display:flex; justify-content:space-between; align-items:center; padding:1rem 1.5rem; border-bottom:1px solid var(--border); }
-    .auth-close{ background:none; border:none; font-size:1.8rem; color:var(--muted); cursor:pointer; }
-    .auth-close:hover{ color:var(--accent); }
-    .auth-tabs{ display:flex; }
-    .tab-btn{ flex:1; padding:1rem; background:none; border:none; color:var(--muted); cursor:pointer; font-weight:500; }
-    .tab-btn.active{ color:var(--accent); background:rgba(250,204,21,.1); }
+    .auth-header{display:flex;justify-content:space-between;align-items:center;padding:1rem 1.5rem;border-bottom:1px solid var(--border)}
+    .auth-close{background:none;border:none;font-size:1.8rem;color:var(--muted);cursor:pointer}
+    .auth-close:hover{color:var(--accent)}
+    .auth-tabs{display:flex}
+    .tab-btn{flex:1;padding:1rem;background:none;border:none;color:var(--muted);cursor:pointer;font-weight:700}
+    .tab-btn.active{color:var(--accent);background:rgba(250,204,21,.1)}
+    .auth-content{padding:2rem;overflow-y:auto}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block;animation:fade .3s ease}
+    @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
-    .auth-content{
-      padding:2rem;
-      overflow-y:auto;
-      max-height:calc(90vh - 120px);
-    }
-
-    .tab-panel{ display:none; }
-    .tab-panel.active{ display:block; animation:fade .3s ease; }
-    @keyframes fade{ from{ opacity:0; transform:translateY(10px) } to{ opacity:1; transform:none } }
-
-    .form-group{ margin-bottom:1.1rem; text-align:left; }
-    .form-group label{ display:block; font-size:.85rem; color:var(--muted); margin-bottom:.4rem; }
+    .form-group{margin-bottom:1.1rem;text-align:left}
+    .form-group label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:.4rem}
     .form-group input,.form-group select{
-      width:100%; padding:.9rem 1rem; border-radius:12px; border:2px solid var(--border);
-      background:rgba(255,255,255,.05); color:var(--text);
+      width:100%;padding:.9rem 1rem;border-radius:12px;border:2px solid var(--border);
+      background:rgba(255,255,255,.05);color:var(--text);outline:none;
     }
-    .form-group small{ color:var(--muted); display:block; margin-top:6px; font-size:.8rem; }
-
-    .submit-btn{ width:100%; padding:1rem; border:none; border-radius:12px;
-      background:linear-gradient(135deg,var(--accent),#eab308); font-weight:600; cursor:pointer; margin-top:.5rem; color:#000; }
-
-    .flash{ margin:14px 5% 0; padding:12px 14px; border:1px solid var(--border); border-radius:12px;
-      background:rgba(250,204,21,.08); color:var(--text); }
-
-    .hint{ margin-top:6px; font-size:.82rem; color:var(--muted); }
-    .inline-row{ display:flex; gap:10px; align-items:center; justify-content:space-between; }
-    .pill{ font-size:.78rem; border:1px solid var(--border); padding:6px 10px; border-radius:999px; color:var(--muted); }
-
-    /* ✅ OVERLAY LOADING (mesmo padrão do index) */
-    .loading-overlay{
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.65);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
+    .form-group small{color:var(--muted);display:block;margin-top:6px;font-size:.82rem;line-height:1.2rem}
+    .submit-btn{
+      width:100%;padding:1rem;border:none;border-radius:12px;
+      background:linear-gradient(135deg,var(--accent),#eab308);font-weight:800;cursor:pointer;margin-top:.5rem;color:#020617;
     }
-    .loading-box{
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      align-items: center;
-      padding: 18px 20px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: rgba(2,6,23,.92);
-      color: var(--text);
-      min-width: 220px;
+
+    .flash{
+      margin:14px 0 0;padding:12px 14px;border:1px solid rgba(239,68,68,.35);
+      border-radius:12px;background:rgba(239,68,68,.12);color:#fecaca;font-weight:800;
     }
-    .spinner{
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      border: 4px solid rgba(255,255,255,.18);
-      border-top-color: var(--accent);
-      animation: spin .9s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hint{margin-top:6px;font-size:.82rem;color:var(--muted)}
+    .inline-row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .pill{font-size:.78rem;border:1px solid var(--border);padding:6px 10px;border-radius:999px;color:var(--muted)}
+
+    /* overlay loading */
+    .loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:9999}
+    .loading-box{display:flex;flex-direction:column;gap:12px;align-items:center;padding:18px 20px;border-radius:14px;border:1px solid var(--border);background:rgba(2,6,23,.92);color:var(--text);min-width:220px}
+    .spinner{width:34px;height:34px;border-radius:50%;border:4px solid rgba(255,255,255,.18);border-top-color:var(--accent);animation:spin .9s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 
@@ -120,23 +100,17 @@
 
     {% if current_user.is_authenticated %}
       <div style="display:flex; gap:12px; align-items:center;">
-        <div style="font-weight:600; color: var(--accent);">
-          Bem Vindo {{ current_user.username }} !
+        <div style="font-weight:700; color: var(--muted);">
+          Bem Vindo <span style="color:var(--accent)">{{ current_user.username }}</span> !
         </div>
         <form method="POST" action="/logout" style="margin:0;">
           <button class="cta-btn" type="submit">Sair</button>
         </form>
       </div>
     {% else %}
-      <button class="cta-btn" id="openModal">Entrar / Registrar</button>
+      <button class="cta-btn" id="openModal" type="button">Entrar / Registrar</button>
     {% endif %}
   </nav>
-
-  {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      <div class="flash">{{ messages[0] }}</div>
-    {% endif %}
-  {% endwith %}
 
   <section class="hero">
     <div>
@@ -156,26 +130,34 @@
     <div class="auth-container">
       <div class="auth-header">
         <strong>Conta Yonexus</strong>
-        <button class="auth-close" id="closeModal">&times;</button>
+        <button class="auth-close" id="closeModal" type="button">&times;</button>
       </div>
 
       <div class="auth-tabs">
-        <button class="tab-btn active" data-tab="login">Entrar</button>
-        <button class="tab-btn" data-tab="register">Criar Conta</button>
+        <button class="tab-btn active" data-tab="login" type="button">Entrar</button>
+        <button class="tab-btn" data-tab="register" type="button">Criar Conta</button>
       </div>
 
       <div class="auth-content">
         <!-- LOGIN -->
         <div id="loginTab" class="tab-panel active">
+          {% with messages = get_flashed_messages() %}
+            {% if messages %}
+              <div class="flash">{{ messages[-1] }}</div>
+            {% endif %}
+          {% endwith %}
+
           <form method="POST" action="/login">
             <div class="form-group">
               <label>Usuário ou email</label>
               <input name="username" type="text" required />
             </div>
+
             <div class="form-group">
               <label>Senha</label>
               <input name="password" type="password" required />
             </div>
+
             <button class="submit-btn" type="submit">Entrar</button>
           </form>
         </div>
@@ -198,12 +180,13 @@
               <input name="password" type="password" required />
             </div>
 
-            <hr style="border:0; border-top:1px solid var(--border); margin:18px 0;">
+            <hr style="border:0; border-top:1px solid var(--border); margin:18px 0;" />
 
             <div class="form-group">
               <label>Nome do personagem</label>
+              <!-- ✅ name alinhado com o app.py -->
               <input name="char_name" id="regCharName" type="text" placeholder="Ex: Roth Lion" required />
-              <div class="inline-row">
+              <div class="inline-row" style="margin-top:8px;">
                 <div class="hint" id="charFetchStatus"></div>
                 <div class="pill" id="charLevelPill" style="display:none;"></div>
               </div>
@@ -211,13 +194,15 @@
 
             <div class="form-group">
               <label>XP inicial (automático)</label>
+              <!-- ✅ name alinhado com o app.py -->
               <input name="xp_start" id="regXpStart" type="text" readonly />
               <small>Calculado a partir do nível atual do personagem.</small>
             </div>
 
             <div class="form-group">
               <label>Nível meta (mínimo: nível atual + 1)</label>
-              <select id="registerGoalLevel" name="goal_level">
+              <!-- ✅ name alinhado com o app.py -->
+              <select id="registerGoalLevel" name="goal_level" required>
                 <option value="">Carregando...</option>
               </select>
               <small id="registerGoalPreview"></small>
@@ -225,6 +210,7 @@
 
             <div class="form-group">
               <label>Meta diária</label>
+              <!-- ✅ name alinhado com o app.py -->
               <input name="daily_goal" id="regDailyGoal" type="text" value="1.000.000" />
               <small>Padrão: 1.000.000 (você pode mudar depois nas configurações).</small>
             </div>
@@ -236,8 +222,8 @@
     </div>
   </div>
 
-  <!-- ✅ OVERLAY LOADING -->
-  <div id="loadingOverlay" class="loading-overlay" aria-busy="false" style="display:none;">
+  <!-- OVERLAY LOADING -->
+  <div id="loadingOverlay" class="loading-overlay" aria-busy="false">
     <div class="loading-box">
       <div class="spinner"></div>
       <div id="loadingText">Carregando...</div>
@@ -249,14 +235,24 @@
     const openModal = document.getElementById("openModal");
     const closeModal = document.getElementById("closeModal");
 
-    if (openModal) {
-      openModal.onclick = () => {
-        authModal.style.display = "flex";
-        initRegisterDefaults();
-      };
+    function openAuthModal() {
+      if (!authModal) return;
+      authModal.style.display = "flex";
+      // quando abrir, já prepara defaults do cadastro
+      initRegisterDefaults();
     }
-    if (closeModal) closeModal.onclick = () => authModal.style.display = "none";
-    window.onclick = (e) => { if (e.target === authModal) authModal.style.display = "none"; };
+
+    function closeAuthModal() {
+      if (!authModal) return;
+      authModal.style.display = "none";
+    }
+
+    if (openModal) openModal.onclick = openAuthModal;
+    if (closeModal) closeModal.onclick = closeAuthModal;
+
+    window.onclick = (e) => {
+      if (e.target === authModal) closeAuthModal();
+    };
 
     document.querySelectorAll(".tab-btn").forEach(btn => {
       btn.onclick = () => {
@@ -268,8 +264,17 @@
       };
     });
 
-    // (Opcional) funções prontas para você usar no JS do cadastro
-    function showLoading(text = "Carregando..."){
+    // Se houver flash (ex.: login inválido), abre o modal e fica na aba login
+    const hasFlash = {{ 'true' if get_flashed_messages() else 'false' }};
+    if (hasFlash) {
+      openAuthModal();
+      document.querySelectorAll(".tab-btn, .tab-panel").forEach(el => el.classList.remove("active"));
+      document.querySelector('.tab-btn[data-tab="login"]').classList.add("active");
+      document.getElementById("loginTab").classList.add("active");
+    }
+
+    // -------- Helpers cadastro ----------
+    function showLoading(text = "Carregando...") {
       const overlay = document.getElementById("loadingOverlay");
       const label = document.getElementById("loadingText");
       if (!overlay) return;
@@ -277,8 +282,7 @@
       overlay.style.display = "flex";
       overlay.setAttribute("aria-busy", "true");
     }
-
-    function hideLoading(){
+    function hideLoading() {
       const overlay = document.getElementById("loadingOverlay");
       if (!overlay) return;
       overlay.style.display = "none";
@@ -287,20 +291,25 @@
 
     let xpTableCache = null;
 
-    function fmt(n){ return Number(n).toLocaleString("pt-BR"); }
-    function digitsOnly(str){ return String(str || "").replace(/\D/g, ""); }
+    function fmt(n) {
+      return Number(n).toLocaleString("pt-BR");
+    }
 
-    function setStatus(msg, type=""){
+    function digitsOnly(str) {
+      return String(str || "").replace(/\D/g, "");
+    }
+
+    function setStatus(msg, type) {
       const el = document.getElementById("charFetchStatus");
       if (!el) return;
-      el.textContent = msg;
+      el.textContent = msg || "";
       el.style.color = type === "err" ? "#ef4444" : (type === "ok" ? "#22c55e" : "var(--muted)");
     }
 
-    async function loadXpTable(){
+    async function loadXpTable() {
       if (xpTableCache) return xpTableCache;
       showLoading("Carregando tabela de níveis...");
-      try{
+      try {
         const res = await fetch("/xp-table");
         xpTableCache = await res.json();
         return xpTableCache;
@@ -309,34 +318,30 @@
       }
     }
 
-    function xpForLevelFromTable(level){
+    function xpForLevelFromTable(level) {
       const row = (xpTableCache || []).find(r => Number(r.level) === Number(level));
       return row ? Number(row.experience) : null;
     }
 
-    function updateGoalPreview(){
+    function updateGoalPreview() {
       const sel = document.getElementById("registerGoalLevel");
       const preview = document.getElementById("registerGoalPreview");
       if (!sel || !preview || !xpTableCache) return;
-
-      if (!sel.value){
-        preview.textContent = "";
-        return;
-      }
-
+      if (!sel.value) { preview.textContent = ""; return; }
       const lvl = Number(sel.value);
       const xp = xpForLevelFromTable(lvl);
       preview.textContent = xp !== null ? `XP total no nível: ${fmt(xp)}` : "";
     }
 
-    function populateGoalSelect(minLevelExclusive, suggestedLevel){
+    function populateGoalSelect(minLevelExclusive, suggestedLevel) {
       const sel = document.getElementById("registerGoalLevel");
-      if (!sel) return;
+      if (!sel || !xpTableCache) return;
+
       sel.innerHTML = "";
 
       const optEmpty = document.createElement("option");
       optEmpty.value = "";
-      optEmpty.textContent = "Sem meta";
+      optEmpty.textContent = "Selecione...";
       sel.appendChild(optEmpty);
 
       xpTableCache.forEach(row => {
@@ -344,7 +349,9 @@
         const opt = document.createElement("option");
         opt.value = String(lvl);
         opt.textContent = `Level ${lvl}`;
-        if (minLevelExclusive !== null && minLevelExclusive !== undefined && lvl <= minLevelExclusive) opt.disabled = true;
+        if (minLevelExclusive !== null && minLevelExclusive !== undefined && lvl <= Number(minLevelExclusive)) {
+          opt.disabled = true;
+        }
         sel.appendChild(opt);
       });
 
@@ -353,10 +360,10 @@
       updateGoalPreview();
     }
 
-    async function fetchCharacterLevel(charName){
+    async function fetchCharacterLevel(charName) {
       const url = `https://api.tibiadata.com/v4/character/${encodeURIComponent(charName)}`;
       showLoading("Buscando personagem...");
-      try{
+      try {
         const r = await fetch(url);
         const j = await r.json();
         return Number(j.character.character.level);
@@ -365,7 +372,7 @@
       }
     }
 
-    async function initRegisterDefaults(){
+    async function initRegisterDefaults() {
       await loadXpTable();
 
       const daily = document.getElementById("regDailyGoal");
@@ -374,22 +381,26 @@
       populateGoalSelect(null, null);
 
       const charInput = document.getElementById("regCharName");
-      if (!charInput || charInput.dataset.bound === "1") return;
+      if (!charInput) return;
 
+      // bind uma vez
+      if (charInput.dataset.bound === "1") return;
       charInput.dataset.bound = "1";
+
       charInput.addEventListener("blur", async () => {
         const name = charInput.value.trim();
         if (!name) return;
 
-        setStatus("Buscando personagem...");
+        setStatus("Buscando personagem...", "muted");
+
         const submit = document.getElementById("registerSubmit");
         if (submit) submit.disabled = true;
 
-        try{
+        try {
           const level = await fetchCharacterLevel(name);
 
           const pill = document.getElementById("charLevelPill");
-          if (pill){
+          if (pill) {
             pill.style.display = "inline-block";
             pill.textContent = `Level atual: ${level}`;
           }
@@ -400,23 +411,25 @@
 
           populateGoalSelect(level, level + 10);
 
+          // escolhe o primeiro nível habilitado automaticamente
           const sel = document.getElementById("registerGoalLevel");
           if (sel) {
             const firstAllowed = [...sel.options].find(o => o.value && !o.disabled);
             if (firstAllowed) sel.value = firstAllowed.value;
+            updateGoalPreview();
           }
-          updateGoalPreview();
 
           setStatus("Personagem encontrado.", "ok");
-        }catch(e){
+        } catch (e) {
           setStatus("Não foi possível encontrar esse personagem. Verifique o nome.", "err");
-        }finally{
+        } finally {
           if (submit) submit.disabled = false;
         }
       });
 
+      // antes de enviar: remove pontos (1.000.000 -> 1000000)
       const form = document.getElementById("registerForm");
-      if (form && form.dataset.bound !== "1"){
+      if (form && form.dataset.bound !== "1") {
         form.dataset.bound = "1";
         form.addEventListener("submit", () => {
           const xpStartEl = document.getElementById("regXpStart");
