@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yonexus - Tibia Fansite</title>
+<meta name="description" content="Yonexus - Tibia Fansite brasileiro com notícias, rankings e ferramentas Tibia.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+    --bg:#020617;--border:#1e293b;
+    --text:#e5e7eb;--muted:#94a3b8;
+    --accent:#facc15;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+    font-family:'Inter',sans-serif;
+    background:#020617;color:var(--text);
+}
+
+/* Navbar */
+.navbar{
+    position:fixed;top:0;width:100%;
+    padding:1.5rem 5%;
+    background:rgba(2,6,23,.95);
+    border-bottom:1px solid var(--border);
+    display:flex;justify-content:space-between;
+    z-index:1000;
+}
+.logo{
+    font-size:2rem;font-weight:700;
+    background:linear-gradient(135deg,var(--accent),#eab308);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.cta-btn{
+    padding:12px 28px;border:none;
+    border-radius:50px;font-weight:600;
+    cursor:pointer;
+    background:linear-gradient(135deg,var(--accent),#eab308);
+}
+
+/* Hero */
+.hero{
+    min-height:100vh;
+    display:flex;align-items:center;justify-content:center;
+    text-align:center;padding:0 5%;
+}
+.hero h1{
+    font-size:4rem;
+    background:linear-gradient(135deg,var(--accent),#fff);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hero p{
+    color:var(--muted);
+    margin-top:1rem;
+    font-size:1.2rem;
+}
+
+/* Cards botões */
+.hero-actions{
+    margin-top:3rem;
+    display:flex;
+    gap:1.5rem;
+    justify-content:center;
+    flex-wrap:wrap;
+}
+.action-card{
+    min-width:200px;
+    padding:1.5rem 2rem;
+    border-radius:20px;
+    background:rgba(2,6,23,.7);
+    border:1px solid var(--border);
+    color:var(--text);
+    text-decoration:none;
+    text-align:center;
+    font-weight:600;
+    transition:.3s;
+}
+.action-card span{
+    font-size:2rem;
+    display:block;
+    margin-bottom:.6rem;
+}
+.action-card:hover{
+    transform:translateY(-6px);
+    border-color:var(--accent);
+    box-shadow:0 15px 35px rgba(250,204,21,.25);
+    color:var(--accent);
+}
+
+/* Modal */
+.auth-modal{
+    display:none;position:fixed;inset:0;
+    background:rgba(0,0,0,.85);
+    backdrop-filter:blur(10px);
+    z-index:2000;
+    align-items:center;justify-content:center;
+}
+.auth-container{
+    width:100%;max-width:420px;
+    background:#020617;
+    border:2px solid var(--border);
+    border-radius:20px;
+    overflow:hidden;
+}
+
+/* Header modal */
+.auth-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:1rem 1.5rem;
+    border-bottom:1px solid var(--border);
+}
+.auth-close{
+    background:none;border:none;
+    font-size:1.8rem;
+    color:var(--muted);
+    cursor:pointer;
+}
+.auth-close:hover{color:var(--accent)}
+
+.auth-tabs{display:flex}
+.tab-btn{
+    flex:1;padding:1rem;
+    background:none;border:none;
+    color:var(--muted);
+    cursor:pointer;font-weight:500;
+}
+.tab-btn.active{
+    color:var(--accent);
+    background:rgba(250,204,21,.1);
+}
+
+.auth-content{padding:2rem}
+.tab-panel{display:none}
+.tab-panel.active{display:block;animation:fade .3s ease}
+
+.form-group{margin-bottom:1.2rem}
+.form-group label{
+    display:block;font-size:.85rem;
+    color:var(--muted);margin-bottom:.4rem;
+}
+.form-group input{
+    width:100%;padding:.9rem 1rem;
+    border-radius:12px;
+    border:2px solid var(--border);
+    background:rgba(255,255,255,.05);
+    color:var(--text);
+}
+
+.submit-btn{
+    width:100%;padding:1rem;
+    border:none;border-radius:12px;
+    background:linear-gradient(135deg,var(--accent),#eab308);
+    font-weight:600;cursor:pointer;
+    margin-top:.5rem;
+}
+
+@keyframes fade{
+    from{opacity:0;transform:translateY(10px)}
+    to{opacity:1;transform:none}
+}
+</style>
+</head>
+
+<body>
+<nav class="navbar">
+    <div class="logo">🏰 Yonexus</div>
+    <button class="cta-btn" id="openModal">Entrar / Registrar</button>
+</nav>
+
+<section class="hero">
+    <div>
+        <h1>Yonexus</h1>
+        <p>O fansite da comunidade Tibia</p>
+
+        <div class="hero-actions">
+            <a href="/xp-tracker" class="action-card">
+                <span>📊</span>
+                XP Tracker
+            </a>
+            <a href="/bestiary" class="action-card">
+                <span>🐉</span>
+                Bestiário
+            </a>
+            <a href="#" class="action-card">
+                <span>📰</span>
+                Notícias
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- MODAL -->
+<div id="authModal" class="auth-modal">
+<div class="auth-container">
+    <div class="auth-header">
+        <strong>Conta Yonexus</strong>
+        <button class="auth-close" id="closeModal">&times;</button>
+    </div>
+
+    <div class="auth-tabs">
+        <button class="tab-btn active" data-tab="login">Entrar</button>
+        <button class="tab-btn" data-tab="register">Criar Conta</button>
+    </div>
+
+    <div class="auth-content">
+        <div id="loginTab" class="tab-panel active">
+            <div class="form-group">
+                <label>Usuário</label>
+                <input type="text">
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password">
+            </div>
+            <button class="submit-btn">Entrar</button>
+        </div>
+
+        <div id="registerTab" class="tab-panel">
+            <div class="form-group">
+                <label>Usuário</label>
+                <input type="text">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email">
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password">
+            </div>
+            <button class="submit-btn">Criar Conta</button>
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+const authModal = document.getElementById('authModal');
+const openModal = document.getElementById('openModal');
+const closeModal = document.getElementById('closeModal');
+
+openModal.onclick = () => authModal.style.display = 'flex';
+closeModal.onclick = () => authModal.style.display = 'none';
+window.onclick = e => e.target === authModal && (authModal.style.display = 'none');
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.onclick = () => {
+        if (btn.classList.contains('active')) return;
+        document.querySelectorAll('.tab-btn,.tab-panel')
+            .forEach(el => el.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab + 'Tab').classList.add('active');
+    };
+});
+
+// 🔧 FIX: Links dos cards funcionam mesmo com modal ativa
+document.querySelectorAll('.action-card').forEach(link => {
+    link.onclick = (e) => {
+        e.stopPropagation();
+    };
+});
+</script>
+
+</body>
+</html>

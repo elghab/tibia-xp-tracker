@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tibia XP Tracker</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="header">
+    <button class="settings-btn" onclick="openSettings()">⚙</button>
+    <h1 id="charName">Roth Lion</h1>
+    <div class="subtitle" id="info">Carregando...</div>
+  </div>
+
+  <div class="container">
+    <div class="stats-grid">
+      <div class="card highlight">
+        <span>XP Atual</span>
+        <h2 id="xp">0</h2>
+      </div>
+
+      <div class="card highlight">
+        <span>XP Restante</span>
+        <h2 id="remaining">0</h2>
+      </div>
+
+      <div class="card highlight">
+        <span>Média diária</span>
+        <h2 id="avg">0</h2>
+      </div>
+
+      <div class="card highlight">
+        <span>Dias estimados</span>
+        <h2 id="eta">—</h2>
+      </div>
+    </div>
+
+    <div class="entry">
+      <h3>Adicionar XP</h3>
+      <div class="entry-box">
+        <input type="number" id="xpInput" placeholder="Ex: 1234567" />
+        <button onclick="addXP()">Adicionar</button>
+      </div>
+    </div>
+
+    <!-- META DIÁRIA ATUALIZADA -->
+    <div class="daily-goal">
+      <div style="display:flex; justify-content: space-between; align-items:center;">
+        <h3 id="dailyTitle">Meta diária</h3>
+        <span id="dailyPercent" style="color: var(--muted); font-size: 14px;">0%</span>
+      </div>
+
+      <div class="progress-bar">
+        <div id="progressFill" class="fill"></div>
+      </div>
+
+      <div style="display:flex; justify-content: space-between; margin-top: 6px; font-size: 14px;">
+        <span id="dailyText">0 / 0 XP</span>
+        <span id="dailyRemaining" style="color: var(--muted);">0 XP para 100%</span>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+
+  <div class="footer">
+    Tibia XP Tracker • Feito de Tibiano para Tibiano
+  </div>
+
+  <!-- MODAL CONFIG -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <h3>Configurações</h3>
+
+      <label>Nome do char</label>
+      <input id="cfgName" type="text" />
+
+      <label>XP inicial</label>
+      <input id="cfgStart" type="number" />
+
+      <label>Nível meta</label>
+      <select id="cfgGoalLevel"></select>
+      <small id="goalXpPreview" style="color: var(--muted); display:block; margin-top:6px;"></small>
+
+      <label>Meta diária</label>
+      <input id="cfgDaily" type="number" />
+
+      <div class="modal-actions">
+        <button onclick="closeSettings()">Cancelar</button>
+        <button class="save" onclick="saveSettings()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/main.js"></script>
+</body>
+</html>

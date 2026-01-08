@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bestiário - Yonexus</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+
+  <style>
+    .bestiary-shell{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+    }
+
+    .bestiary-topbar{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 14px;
+      background: linear-gradient(180deg, #020617, #000);
+    }
+
+    .bestiary-title{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:700;
+      letter-spacing: .5px;
+    }
+
+    .bestiary-title a{
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .bestiary-search{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex: 1;
+      justify-content: flex-end;
+    }
+
+    .bestiary-search input{
+      width: min(520px, 100%);
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #000;
+      color: var(--text);
+      outline: none;
+    }
+
+    .bestiary-search input:focus{
+      border-color: var(--accent);
+    }
+
+    .bestiary-search button{
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #eab308);
+      color: #000;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .bestiary-window{
+      margin-top: 18px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      background: linear-gradient(180deg, #020617, #000);
+    }
+
+    .bestiary-window-header{
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .bestiary-grid{
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      padding: 16px;
+    }
+
+    @media (max-width: 1100px){
+      .bestiary-grid{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    @media (max-width: 900px){
+      .bestiary-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px){
+      .bestiary-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .bestiary-search{ flex-direction: column; align-items: stretch; }
+      .bestiary-search input{ width: 100%; }
+    }
+
+    .bestiary-card{
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(2, 6, 23, .6);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+      min-height: 148px;
+    }
+
+    .bestiary-card:hover{
+      transform: translateY(-2px);
+      border-color: rgba(250, 204, 21, .55);
+      box-shadow: 0 0 26px rgba(250, 204, 21, .08);
+    }
+
+    .bestiary-card-top{
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(30,41,59,.9);
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .8px;
+      text-transform: capitalize;
+    }
+
+    .bestiary-card-mid{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 10px 10px 6px;
+    }
+
+    .bestiary-icon-frame{
+      width: 74px;
+      height: 74px;
+      border-radius: 6px;
+      border: 1px solid rgba(148,163,184,.35);
+      background:
+        radial-gradient(circle at top, rgba(255,255,255,.06), rgba(255,255,255,0)),
+        linear-gradient(180deg, rgba(148,163,184,.10), rgba(0,0,0,.25));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow: hidden;
+    }
+
+    .bestiary-icon-frame img{
+      width: 66px;
+      height: 66px;
+      object-fit: contain;
+      filter: saturate(.95) contrast(1.05);
+    }
+
+    .bestiary-card-bottom{
+      padding: 6px 10px 10px;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    /* View dinâmica (grid vs lista) */
+    .view{ display: none; }
+    .view.active{ display: block; }
+
+    .list-header{
+      padding: 14px 16px 0;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .list-title{
+      color: var(--text);
+      font-weight: 700;
+      letter-spacing: .4px;
+    }
+
+    .list-subtitle{
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    .back-btn{
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,.35);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .back-btn:hover{
+      border-color: rgba(250,204,21,.55);
+      box-shadow: 0 0 18px rgba(250,204,21,.08);
+    }
+
+    .monster-list{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .monster-item{
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(0,0,0,.35);
+    }
+
+    .monster-name{
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .monster-meta{
+      color: var(--muted);
+      font-size: 13px;
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .monster-icon{
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid rgba(148,163,184,.25);
+      background: rgba(255,255,255,.04);
+      object-fit: contain;
+    }
+
+    .hint{
+      padding: 0 16px 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bestiary-shell">
+    <div class="bestiary-topbar">
+      <div class="bestiary-title">
+        <a href="/">← Yonexus</a>
+        <span>Bestiário</span>
+      </div>
+
+      <div class="bestiary-search">
+        <input id="searchInput" type="text" placeholder="Pesquisar monstro (ex: dragon, demon)..." autocomplete="off" />
+        <button id="clearBtn" type="button">Limpar</button>
+      </div>
+    </div>
+
+    <div class="bestiary-window">
+      <div class="bestiary-window-header">
+        <div id="windowHeaderLeft">Categories</div>
+        <div id="windowHeaderRight">Clique em uma categoria para abrir</div>
+      </div>
+
+      <!-- VIEW 1: categorias -->
+      <div id="categoriesView" class="view active">
+        <div id="bestiaryGrid" class="bestiary-grid"></div>
+        <div class="hint">Dica: comece a digitar para pesquisar e substituir o grid por resultados.</div>
+      </div>
+
+      <!-- VIEW 2: lista (categoria ou pesquisa) -->
+      <div id="listView" class="view">
+        <div class="list-header">
+          <div>
+            <div id="listTitle" class="list-title">Resultados</div>
+            <div id="listSubtitle" class="list-subtitle"></div>
+          </div>
+          <button id="backBtn" class="back-btn" type="button">Voltar</button>
+        </div>
+        <div id="monsterList" class="monster-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Ordem fixa para ficar igual ao jogo (e total vem do JSON)
+    const categoryOrder = [
+      { key: "amphibic", label: "Amphibic" },
+      { key: "aquatic", label: "Aquatic" },
+      { key: "bird", label: "Bird" },
+      { key: "construct", label: "Construct" },
+      { key: "demon", label: "Demon" },
+
+      { key: "dragon", label: "Dragon" },
+      { key: "elemental", label: "Elemental" },
+      { key: "extra_dimensional", label: "Extra Dimensional" },
+      { key: "fey", label: "Fey" },
+      { key: "giant", label: "Giant" },
+
+      { key: "human", label: "Human" },
+      { key: "humanoid", label: "Humanoid" },
+      { key: "inborn", label: "Inborn" },
+      { key: "lycanthrope", label: "Lycanthrope" },
+      { key: "magical", label: "Magical" }
+    ];
+
+    // DOM
+    const categoriesView = document.getElementById("categoriesView");
+    const listView = document.getElementById("listView");
+    const bestiaryGrid = document.getElementById("bestiaryGrid");
+    const monsterList = document.getElementById("monsterList");
+
+    const windowHeaderLeft = document.getElementById("windowHeaderLeft");
+    const windowHeaderRight = document.getElementById("windowHeaderRight");
+
+    const listTitle = document.getElementById("listTitle");
+    const listSubtitle = document.getElementById("listSubtitle");
+
+    const inputEl = document.getElementById("searchInput");
+    const clearBtn = document.getElementById("clearBtn");
+    const backBtn = document.getElementById("backBtn");
+
+    // Dados carregados do JSON
+    // bestiaryByCategory: { [categoryKey]: [{name, hp, exp, icon}, ...] }
+    let bestiaryByCategory = {};
+    let categories = []; // { key, label, total }
+
+    // Caminhos de imagens
+    function categoryIconUrl(key){
+      return `/static/img/bestiary/categories/${key}.png`;
+    }
+
+    function monsterIconUrl(fileName){
+      return `/static/img/bestiary/monsters/${fileName}`;
+    }
+
+    function showCategories(){
+      categoriesView.classList.add("active");
+      listView.classList.remove("active");
+      windowHeaderLeft.innerText = "Categories";
+      windowHeaderRight.innerText = "Clique em uma categoria para abrir";
+    }
+
+    function showList(){
+      categoriesView.classList.remove("active");
+      listView.classList.add("active");
+      windowHeaderLeft.innerText = "Bestiary";
+      windowHeaderRight.innerText = "Resultados";
+    }
+
+    function renderCategoriesGrid(){
+      bestiaryGrid.innerHTML = "";
+
+      categories.forEach(cat => {
+        const card = document.createElement("div");
+        card.className = "bestiary-card";
+        card.dataset.key = cat.key;
+
+        card.innerHTML = `
+          <div class="bestiary-card-top">${cat.label}</div>
+          <div class="bestiary-card-mid">
+            <div class="bestiary-icon-frame">
+              <img src="${categoryIconUrl(cat.key)}" alt="${cat.label}"
+                   onerror="this.style.display='none';" />
+            </div>
+          </div>
+          <div class="bestiary-card-bottom">
+            <div>Total: ${cat.total}</div>
+          </div>
+        `;
+
+        card.onclick = () => openCategory(cat.key);
+
+        bestiaryGrid.appendChild(card);
+      });
+    }
+
+    function renderMonsterList(items, subtitleText){
+      monsterList.innerHTML = "";
+
+      if (!items || items.length === 0){
+        monsterList.innerHTML = `
+          <div class="monster-item">
+            <div class="monster-name">Nenhum resultado</div>
+            <div class="monster-meta">Tente outro nome.</div>
+          </div>
+        `;
+        listSubtitle.innerText = subtitleText || "";
+        return;
+      }
+
+      listSubtitle.innerText = subtitleText || `${items.length} encontrado(s)`;
+
+      items.forEach(m => {
+        const div = document.createElement("div");
+        div.className = "monster-item";
+
+        const hpText = (typeof m.hp === "number") ? `HP: ${m.hp.toLocaleString()}` : null;
+        const expText = (typeof m.exp === "number") ? `EXP: ${m.exp.toLocaleString()}` : null;
+
+        div.innerHTML = `
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
+            <img class="monster-icon" src="${m.icon ? monsterIconUrl(m.icon) : ""}"
+                 alt="" onerror="this.style.display='none';" />
+            <div class="monster-name">${m.name}</div>
+          </div>
+          <div class="monster-meta">
+            ${hpText ? `<span>${hpText}</span>` : ""}
+            ${expText ? `<span>•</span><span>${expText}</span>` : ""}
+            ${m.category_label ? `<span>•</span><span>${m.category_label}</span>` : ""}
+          </div>
+        `;
+
+        monsterList.appendChild(div);
+      });
+    }
+
+    function openCategory(categoryKey){
+      const items = (bestiaryByCategory[categoryKey] || []).map(m => ({
+        ...m,
+        category_key: categoryKey,
+        category_label: (categories.find(c => c.key === categoryKey)?.label) || categoryKey
+      }));
+
+      listTitle.innerText = `Categoria: ${(categories.find(c => c.key === categoryKey)?.label) || categoryKey}`;
+      showList();
+      renderMonsterList(items, `${items.length} criatura(s)`);
+    }
+
+    function searchMonsters(query){
+      const q = (query || "").trim().toLowerCase();
+      if (!q){
+        showCategories();
+        return;
+      }
+
+      // durante busca: SUMIR categorias e mostrar resultados no lugar
+      const found = [];
+      for (const catKey of Object.keys(bestiaryByCategory)){
+        const catLabel = (categories.find(c => c.key === catKey)?.label) || catKey;
+        for (const m of (bestiaryByCategory[catKey] || [])){
+          if (m.name && m.name.toLowerCase().includes(q)){
+            found.push({ ...m, category_key: catKey, category_label: catLabel });
+          }
+        }
+      }
+
+      listTitle.innerText = `Pesquisa: "${query}"`;
+      showList();
+      renderMonsterList(found, `${found.length} resultado(s)`);
+    }
+
+    async function loadBestiaryData(){
+      const res = await fetch("/static/data/bestiary.json");
+      bestiaryByCategory = await res.json();
+
+      // Monta categorias na ordem do jogo, puxando total do JSON
+      categories = categoryOrder.map(c => ({
+        key: c.key,
+        label: c.label,
+        total: Array.isArray(bestiaryByCategory[c.key]) ? bestiaryByCategory[c.key].length : 0
+      }));
+
+      renderCategoriesGrid();
+      showCategories();
+    }
+
+    // Eventos
+    inputEl.addEventListener("input", () => searchMonsters(inputEl.value));
+
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Escape"){
+        inputEl.value = "";
+        showCategories();
+      }
+    });
+
+    clearBtn.addEventListener("click", () => {
+      inputEl.value = "";
+      showCategories();
+    });
+
+    backBtn.addEventListener("click", () => {
+      inputEl.value = "";
+      showCategories();
+    });
+
+    // init
+    loadBestiaryData().catch(() => {
+      // fallback mínimo para não quebrar a página
+      bestiaryByCategory = { dragon: [{ name: "Dragon", hp: 3800, exp: 700, icon: "dragon.png" }] };
+      categories = categoryOrder.map(c => ({ key: c.key, label: c.label, total: (bestiaryByCategory[c.key] || []).length }));
+      renderCategoriesGrid();
+      showCategories();
+    });
+  </script>
+</body>
+</html>

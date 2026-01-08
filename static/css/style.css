@@ -1,0 +1,252 @@
+:root {
+  --bg: #020617;
+  --panel: #020617;
+  --border: #1e293b;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --accent: #facc15;
+  --positive: #22c55e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, Arial, sans-serif;
+  background: radial-gradient(circle at top, #020617, #000);
+  color: var(--text);
+}
+
+/* HEADER */
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 24px;
+  background: linear-gradient(180deg, #020617, #000);
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: 1px;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* CONTAINER */
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 30px 20px;
+}
+
+/* STATS */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: linear-gradient(180deg, #020617, #000);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 0 30px rgba(250, 204, 21, 0.1);
+}
+
+.card span {
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.card h2 {
+  margin: 10px 0 0;
+  font-size: 26px;
+}
+
+/* HIGHLIGHT */
+.highlight {
+  border-color: var(--accent);
+}
+
+.highlight h2 {
+  color: var(--accent);
+}
+
+/* ENTRY */
+.entry {
+  margin-top: 50px;
+  background: linear-gradient(180deg, #020617, #000);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 25px;
+}
+
+.entry h3 {
+  margin-top: 0;
+}
+
+.entry-box {
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.entry-box input {
+  flex: 1;
+  padding: 14px;
+  font-size: 16px;
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+}
+
+.entry-box input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.entry-box button {
+  padding: 14px 24px;
+  font-size: 15px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--accent), #eab308);
+  color: #000;
+  font-weight: bold;
+}
+
+.entry-box button:hover {
+  filter: brightness(1.1);
+}
+
+/* CHART */
+.chart-section {
+  margin-top: 50px;
+  background: linear-gradient(180deg, #020617, #000);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 25px;
+}
+
+/* FOOTER */
+.footer {
+  text-align: center;
+  padding: 20px;
+  color: var(--muted);
+  font-size: 13px;
+  border-top: 1px solid var(--border);
+}
+
+/* META DIÁRIA */
+.daily-goal {
+  margin-top: 40px;
+  background: linear-gradient(180deg, #020617, #000);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 25px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 18px;
+  background: #020617;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #ef4444, #f97316);
+  transition: width 0.4s ease;
+}
+
+.fill.success {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+.settings-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: #020617;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 25px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.modal-content label {
+  margin-top: 15px;
+  display: block;
+  color: var(--muted);
+}
+
+/* ALTERAÇÃO: agora estiliza input e select */
+.modal-content input,
+.modal-content select {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  background: #000;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+}
+
+/* ALTERAÇÃO: focus também para select (e input do modal) */
+.modal-content input:focus,
+.modal-content select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-actions .save {
+  background: linear-gradient(135deg, var(--accent), #eab308);
+  color: #000;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 10px;
+}

@@ -1,0 +1,61 @@
+{
+  "amphibic": [
+    { "name": "Toad", "hp": 35, "exp": 5, "icon": "toad.png" },
+    { "name": "Swamp Troll", "hp": 195, "exp": 25, "icon": "swamp_troll.png" },
+    { "name": "Witch", "hp": 65, "exp": 40, "icon": "witch.png" }
+  ],
+  "aquatic": [
+    { "name": "Crab", "hp": 55, "exp": 5, "icon": "crab.png" },
+    { "name": "Quara Constrictor", "hp": 1800, "exp": 1400, "icon": "quara_constrictor.png" },
+    { "name": "Hydra", "hp": 3250, "exp": 3850, "icon": "hydra.png" }
+  ],
+  "bird": [
+    { "name": "Chicken", "hp": 5, "exp": 0, "icon": "chicken.png" },
+    { "name": "Terror Bird", "hp": 1200, "exp": 800, "icon": "terror_bird.png" }
+  ],
+  "construct": [
+    { "name": "Golem", "hp": 1850, "exp": 900, "icon": "golem.png" },
+    { "name": "War Golem", "hp": 5500, "exp": 6000, "icon": "war_golem.png" }
+  ],
+  "demon": [
+    { "name": "Demon", "hp": 8200, "exp": 8200, "icon": "demon.png" },
+    { "name": "Diabolic Imp", "hp": 550, "exp": 520, "icon": "diabolic_imp.png" }
+  ],
+  "dragon": [
+    { "name": "Dragon", "hp": 3800, "exp": 700, "icon": "dragon.png" },
+    { "name": "Dragon Lord", "hp": 8000, "exp": 2100, "icon": "dragon_lord.png" }
+  ],
+  "elemental": [
+    { "name": "Fire Elemental", "hp": 950, "exp": 550, "icon": "fire_elemental.png" },
+    { "name": "Energy Elemental", "hp": 750, "exp": 650, "icon": "energy_elemental.png" }
+  ],
+  "extra_dimensional": [
+    { "name": "Reality Reaver", "hp": 4200, "exp": 3000, "icon": "reality_reaver.png" }
+  ],
+  "fey": [
+    { "name": "Pixie", "hp": 550, "exp": 420, "icon": "pixie.png" },
+    { "name": "Faun", "hp": 700, "exp": 520, "icon": "faun.png" }
+  ],
+  "giant": [
+    { "name": "Cyclops", "hp": 260, "exp": 150, "icon": "cyclops.png" },
+    { "name": "Frost Giant", "hp": 1600, "exp": 1200, "icon": "frost_giant.png" }
+  ],
+  "human": [
+    { "name": "Bandit", "hp": 245, "exp": 48, "icon": "bandit.png" },
+    { "name": "Pirate Buccaneer", "hp": 385, "exp": 200, "icon": "pirate_buccaneer.png" }
+  ],
+  "humanoid": [
+    { "name": "Orc", "hp": 80, "exp": 25, "icon": "orc.png" },
+    { "name": "Minotaur", "hp": 160, "exp": 50, "icon": "minotaur.png" }
+  ],
+  "inborn": [
+    { "name": "Dawnfire Asura", "hp": 14000, "exp": 11000, "icon": "dawnfire_asura.png" }
+  ],
+  "lycanthrope": [
+    { "name": "Werewolf", "hp": 2200, "exp": 1200, "icon": "werewolf.png" }
+  ],
+  "magical": [
+    { "name": "Giant Spider", "hp": 1300, "exp": 900, "icon": "giant_spider.png" },
+    { "name": "Warlock", "hp": 2200, "exp": 1600, "icon": "warlock.png" }
+  ]
+}
