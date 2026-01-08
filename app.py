@@ -8,6 +8,7 @@ import json
 import requests
 from datetime import date
 
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
@@ -25,6 +26,17 @@ login_manager.login_view = "index"
 login_manager.init_app(app)
 
 XP_TABLE_FILE = os.path.join(app.root_path, "data", "experience_table_tibia.json")
+
+
+# =========================
+# Anti-cache (corrige “voltar e ver página antiga”)
+# =========================
+@app.after_request
+def add_no_cache_headers(response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 # =========================
@@ -79,6 +91,7 @@ class XpLog(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
+    # Pode modernizar depois para db.session.get(User, int(user_id))
     return User.query.get(int(user_id))
 
 
@@ -88,10 +101,12 @@ def load_user(user_id):
 def ensure_data_dir():
     os.makedirs(os.path.join(app.root_path, "data"), exist_ok=True)
 
+
 def load_xp_table():
     with open(XP_TABLE_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
     return data["experience_table"]
+
 
 def xp_for_level(level: int) -> int:
     for row in load_xp_table():
@@ -99,18 +114,20 @@ def xp_for_level(level: int) -> int:
             return int(row["experience"])
     raise ValueError("Level não encontrado na tabela")
 
+
 def get_character_info(name):
     url = f"https://api.tibiadata.com/v4/character/{name.replace(' ', '%20')}"
     r = requests.get(url, timeout=10)
+    r.raise_for_status()
     char = r.json()["character"]["character"]
     return {
         "vocation": char["vocation"],
-        "level": char["level"],
+        "level": int(char["level"]),
         "world": char["world"]
     }
 
+
 def get_current_character() -> Character:
-    # Por enquanto: 1 personagem por conta (o primeiro).
     return Character.query.filter_by(user_id=current_user.id).first()
 
 
@@ -127,10 +144,12 @@ with app.app_context():
 def index():
     return render_template("home.html")
 
-# IMPORTANTE: público para funcionar no cadastro (select de níveis)
+
+# público para funcionar no cadastro (select de níveis)
 @app.route("/xp-table")
 def xp_table_public():
     return jsonify(load_xp_table())
+
 
 @app.route("/register", methods=["POST"])
 def register():
@@ -139,9 +158,10 @@ def register():
     password = request.form.get("password", "")
 
     char_name = request.form.get("char_name", "").strip()
-    xp_start = request.form.get("xp_start", "0")
-    goal_level = request.form.get("goal_level", "")
-    daily_goal = request.form.get("daily_goal", "0")
+
+    xp_start_raw = (request.form.get("xp_start", "") or "").strip()
+    goal_level_raw = (request.form.get("goal_level", "") or "").strip()
+    daily_goal_raw = (request.form.get("daily_goal", "") or "").strip()
 
     if not username or not email or not password:
         flash("Preencha usuário, email e senha.")
@@ -155,11 +175,42 @@ def register():
         flash("Usuário ou email já cadastrado.")
         return redirect(url_for("index"))
 
+    # nível atual do personagem é a "fonte da verdade"
     try:
-        goal_level_int = int(goal_level) if goal_level else None
-        xp_goal = xp_for_level(goal_level_int) if goal_level_int else 0
+        info = get_character_info(char_name)
+        current_level = int(info["level"])
     except Exception:
-        flash("Nível meta inválido.")
+        flash("Não foi possível encontrar esse personagem na API. Verifique o nome e tente novamente.")
+        return redirect(url_for("index"))
+
+    # xp_start: se vier vazio, usa a tabela pelo nível atual
+    try:
+        xp_start = int(xp_start_raw) if xp_start_raw else int(xp_for_level(current_level))
+    except Exception:
+        flash("XP inicial inválido.")
+        return redirect(url_for("index"))
+
+    # meta diária: default 1.000.000
+    try:
+        daily_goal = int(daily_goal_raw) if daily_goal_raw else 1_000_000
+    except Exception:
+        daily_goal = 1_000_000
+
+    # nível meta: default = current_level + 10
+    try:
+        goal_level = int(goal_level_raw) if goal_level_raw else (current_level + 10)
+    except Exception:
+        goal_level = current_level + 10
+
+    # não pode ser <= nível atual
+    if goal_level <= current_level:
+        goal_level = current_level + 1
+
+    # xp_goal pelo nível meta
+    try:
+        xp_goal = int(xp_for_level(goal_level))
+    except Exception:
+        flash("Nível meta inválido (não existe na tabela).")
         return redirect(url_for("index"))
 
     user = User(username=username, email=email)
@@ -167,10 +218,10 @@ def register():
 
     ch = Character(
         char_name=char_name,
-        xp_start=int(xp_start) if xp_start else 0,
-        goal_level=goal_level_int,
-        xp_goal=int(xp_goal),
-        daily_goal=int(daily_goal) if daily_goal else 0,
+        xp_start=xp_start,
+        goal_level=goal_level,
+        xp_goal=xp_goal,
+        daily_goal=daily_goal
     )
     user.characters.append(ch)
 
@@ -178,7 +229,9 @@ def register():
     db.session.commit()
 
     login_user(user)
-    return redirect(url_for("xp_tracker"))
+    # ✅ volta para home já logado
+    return redirect(url_for("index"))
+
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -194,7 +247,9 @@ def login():
         return redirect(url_for("index"))
 
     login_user(user)
-    return redirect(url_for("xp_tracker"))
+    # ✅ volta para home já logado (em vez de ir direto pro tracker)
+    return redirect(url_for("index"))
+
 
 @app.route("/logout", methods=["POST"])
 @login_required
@@ -210,6 +265,7 @@ def logout():
 @login_required
 def xp_tracker():
     return render_template("index.html")
+
 
 @app.route("/metrics")
 @login_required
@@ -252,6 +308,7 @@ def metrics():
         "daily_log": log
     })
 
+
 @app.route("/add_xp", methods=["POST"])
 @login_required
 def add_xp():
@@ -271,6 +328,7 @@ def add_xp():
     db.session.commit()
     return jsonify({"status": "ok"})
 
+
 @app.route("/reset-xp-history", methods=["POST"])
 @login_required
 def reset_xp_history():
@@ -281,6 +339,7 @@ def reset_xp_history():
     XpLog.query.filter_by(character_id=ch.id).delete()
     db.session.commit()
     return jsonify({"status": "ok"})
+
 
 @app.route("/config", methods=["GET", "POST"])
 @login_required
@@ -298,19 +357,32 @@ def config():
             "goal_level": ch.goal_level
         })
 
-    data = request.json
+    data = request.json or {}
 
-    ch.char_name = data.get("char_name", ch.char_name)
+    ch.char_name = (data.get("char_name") or ch.char_name).strip()
     ch.xp_start = int(data.get("xp_start", ch.xp_start))
     ch.daily_goal = int(data.get("daily_goal", ch.daily_goal))
 
     goal_level = data.get("goal_level", None)
     if goal_level is not None and str(goal_level).strip() != "":
-        ch.goal_level = int(goal_level)
+        desired = int(goal_level)
+
+        # valida com a API (fonte da verdade)
+        try:
+            info = get_character_info(ch.char_name)
+            current_level = int(info["level"])
+        except Exception:
+            return jsonify({"error": "Não foi possível validar o nível atual do personagem (API)."}), 400
+
+        if desired <= current_level:
+            return jsonify({"error": "O nível meta deve ser maior que o nível atual do personagem."}), 400
+
+        ch.goal_level = desired
         ch.xp_goal = xp_for_level(ch.goal_level)
 
     db.session.commit()
     return jsonify({"status": "saved"})
+
 
 @app.route("/bestiary")
 @login_required

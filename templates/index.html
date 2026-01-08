@@ -4,9 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tibia XP Tracker</title>
+
   <link rel="stylesheet" href="/static/css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
   <div class="header">
     <button class="settings-btn" onclick="openSettings()">⚙</button>
@@ -52,7 +54,7 @@
       </label>
     </div>
 
-    <!-- META DIÁRIA ATUALIZADA -->
+    <!-- META DIÁRIA -->
     <div class="daily-goal">
       <div style="display:flex; justify-content: space-between; align-items:center;">
         <h3 id="dailyTitle">Meta diária</h3>
@@ -76,61 +78,6 @@
     <div class="chart-section">
       <canvas id="chart"></canvas>
     </div>
-
-    <!-- MÉTRICAS EXTRAS -->
-    <div class="extra-metrics">
-      <h3>Estatísticas</h3>
-
-      <div class="stats-grid">
-        <div class="card">
-          <span>XP no mês</span>
-          <h2 id="xpMonth">—</h2>
-          <div class="subtitle" id="xpMonthLabel"></div>
-        </div>
-
-        <div class="card">
-          <span>XP no ano</span>
-          <h2 id="xpYear">—</h2>
-          <div class="subtitle" id="xpYearLabel"></div>
-        </div>
-
-        <div class="card">
-          <span>Melhor dia</span>
-          <h2 id="bestDayXp">—</h2>
-          <div class="subtitle" id="bestDayDate"></div>
-        </div>
-
-        <div class="card">
-          <span>Pior dia</span>
-          <h2 id="worstDayXp">—</h2>
-          <div class="subtitle" id="worstDayDate"></div>
-        </div>
-
-        <div class="card">
-          <span>Melhor mês</span>
-          <h2 id="bestMonthXp">—</h2>
-          <div class="subtitle" id="bestMonthKey"></div>
-        </div>
-
-        <div class="card">
-          <span>Dias acima da meta</span>
-          <h2 id="daysHitGoal">—</h2>
-          <div class="subtitle">Considera somente XP positiva do dia</div>
-        </div>
-
-        <div class="card">
-          <span>Streak atual</span>
-          <h2 id="currentStreak">—</h2>
-          <div class="subtitle">Dias seguidos batendo a meta</div>
-        </div>
-
-        <div class="card">
-          <span>Projeção (mediana 14d)</span>
-          <h2 id="median14d">—</h2>
-          <div class="subtitle" id="medianEta">—</div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <div class="footer">
@@ -140,18 +87,28 @@
   <!-- TOAST -->
   <div id="toast" class="toast" aria-live="polite"></div>
 
+  <!-- ✅ OVERLAY LOADING (para evitar “quebra” quando troca char) -->
+  <div id="loadingOverlay" class="loading-overlay" aria-busy="false" style="display:none;">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <div id="loadingText">Carregando...</div>
+    </div>
+  </div>
+
   <!-- MODAL CONFIG -->
   <div id="settingsModal" class="modal">
     <div class="modal-content">
       <h3>Configurações</h3>
 
       <label>Nome do char</label>
-      <input id="cfgName" type="text" />
+      <input id="cfgName" type="text" autocomplete="off" />
 
       <label>XP inicial</label>
+      <!-- ✅ editável, mas o JS vai colocar .min e corrigir se estiver abaixo -->
       <input id="cfgStart" type="number" />
 
       <label>Nível meta</label>
+      <!-- ✅ select usado pelo JS -->
       <select id="cfgGoalLevel"></select>
       <small id="goalXpPreview" style="color: var(--muted); display:block; margin-top:6px;"></small>
 
@@ -159,7 +116,8 @@
       <input id="cfgDaily" type="number" />
 
       <div class="modal-actions" style="justify-content: space-between;">
-        <button onclick="resetXpHistory()" style="background: transparent; border: 1px solid var(--accent); color: var(--accent);">
+        <button onclick="resetXpHistory()"
+                style="background: transparent; border: 1px solid var(--accent); color: var(--accent);">
           Zerar histórico
         </button>
 
