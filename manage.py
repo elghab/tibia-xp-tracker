@@ -16,6 +16,22 @@ def first_char(user_id: int):
     return Character.query.filter_by(user_id=user_id).first()
 
 
+def ask_int(prompt: str, default=None):
+    while True:
+        if default is None:
+            raw = input(f"{prompt}: ").strip()
+            if raw == "":
+                return None
+        else:
+            raw = input(f"{prompt} [{default}]: ").strip()
+            if raw == "":
+                return default
+        try:
+            return int(raw)
+        except Exception:
+            print("Valor inválido, precisa ser número inteiro.")
+
+
 class YonexusCLI(cmd.Cmd):
     intro = "Yonexus CLI (digite 'menu')."
     prompt = "(yonexus) "
@@ -82,8 +98,9 @@ class YonexusCLI(cmd.Cmd):
             print("3) Mostrar personagem do selecionado")
             print("4) Listar logs do selecionado")
             print("5) Importar XP (colar linhas) no selecionado")
-            print("6) Zerar histórico do selecionado")
-            print("7) Deletar usuário (informar id/username/email)")
+            print("6) Editar XP inicial (xp_start) do selecionado")  # ✅ NOVO
+            print("7) Zerar histórico do selecionado")
+            print("8) Deletar usuário (informar id/username/email)")
             print("0) Voltar")
 
             choice = input("Escolha: ").strip()
@@ -115,8 +132,10 @@ class YonexusCLI(cmd.Cmd):
             elif choice == "5":
                 self.do_import_xp("")
             elif choice == "6":
-                self.do_zero_history("")
+                self.do_set_xp_start("")  # ✅ NOVO
             elif choice == "7":
+                self.do_zero_history("")
+            elif choice == "8":
                 key = input("Quem deletar (id/username/email): ").strip()
                 self.do_delete_user(key)
             elif choice == "0":
@@ -124,7 +143,7 @@ class YonexusCLI(cmd.Cmd):
             else:
                 print("Opção inválida.")
 
-    # ---------- commands (ainda dá pra usar sem menu) ----------
+    # ---------- commands ----------
     def do_list_users(self, arg):
         args = shlex.split(arg)
         limit = int(args[0]) if args else 50
@@ -200,6 +219,52 @@ class YonexusCLI(cmd.Cmd):
         else:
             print("Nada para importar.")
 
+    # ✅ NOVO: editar XP inicial
+    def do_set_xp_start(self, arg):
+        """
+        Edita o xp_start do personagem do usuário selecionado.
+        Uso no prompt: set_xp_start 123456
+        Ou use pelo menu (opção 6).
+        """
+        u = self._user()
+        if not u:
+            print("Nenhum usuário selecionado.")
+            return
+
+        ch = first_char(u.id)
+        if not ch:
+            print("Usuário selecionado não tem personagem.")
+            return
+
+        # se veio número pelo comando, usa; senão pergunta
+        val = (arg or "").strip()
+        if val:
+            try:
+                new_xp = int(val)
+            except Exception:
+                print("Uso: set_xp_start <numero>")
+                return
+        else:
+            print("Personagem atual:")
+            self._print_char(ch)
+            new_xp = ask_int("Novo XP inicial (xp_start)", ch.xp_start)
+
+        if new_xp is None:
+            print("Cancelado.")
+            return
+
+        if new_xp < 0:
+            print("XP inicial não pode ser negativo.")
+            return
+
+        if not confirm(f"Salvar xp_start={new_xp} para '{ch.char_name}'? [s/N]: "):
+            print("Cancelado.")
+            return
+
+        ch.xp_start = int(new_xp)
+        db.session.commit()
+        print("XP inicial atualizado.")
+
     def do_zero_history(self, arg):
         u = self._user()
         if not u:
@@ -217,10 +282,8 @@ class YonexusCLI(cmd.Cmd):
         print("Histórico zerado.")
 
     def do_delete_user(self, arg):
-        # permite: delete_user <id|username|email>
         key = (arg or "").strip()
         if not key:
-            # se não passar arg, tenta usar o selecionado
             u = self._user()
             if not u:
                 print("Informe quem deletar ou selecione um usuário.")
