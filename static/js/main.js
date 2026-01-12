@@ -1,6 +1,5 @@
 let chart = null;
 let xpTableCache = null;
-
 window.__originalCharName = null;
 
 /* =========================
@@ -23,7 +22,7 @@ function hideLoading() {
 }
 
 /* =========================
-   Toast (opcional)
+   Toast
 ========================= */
 function showToast(message, type = "info", ms = 2500) {
   const el = document.getElementById("toast");
@@ -50,10 +49,9 @@ function updateCharChangeWarning() {
   const warn = document.getElementById("charChangeWarning");
   const cfgName = document.getElementById("cfgName");
   if (!warn || !cfgName) return;
-
-  const changed = window.__originalCharName !== null &&
+  const changed =
+    window.__originalCharName !== null &&
     normalizeName(cfgName.value) !== normalizeName(window.__originalCharName);
-
   warn.style.display = changed ? "block" : "none";
 }
 
@@ -68,7 +66,9 @@ async function loadXpTable() {
 }
 
 function xpForLevelFromCache(level) {
-  const row = (xpTableCache || []).find(r => Number(r.level) === Number(level));
+  const row = (xpTableCache || []).find(
+    (r) => Number(r.level) === Number(level)
+  );
   return row ? Number(row.experience) : null;
 }
 
@@ -76,7 +76,9 @@ function xpForLevelFromCache(level) {
    TibiaData (level fetch)
 ========================= */
 async function fetchCharacterLevelByName(charName) {
-  const url = `https://api.tibiadata.com/v4/character/${encodeURIComponent(charName)}`;
+  const url = `https://api.tibiadata.com/v4/character/${encodeURIComponent(
+    charName
+  )}`;
   const r = await fetch(url);
   const j = await r.json();
   return Number(j.character.character.level);
@@ -90,8 +92,7 @@ function populateGoalLevelSelect(currentLevel) {
   if (!sel || !xpTableCache) return;
 
   sel.innerHTML = "";
-
-  xpTableCache.forEach(row => {
+  xpTableCache.forEach((row) => {
     const lvl = Number(row.level);
     const opt = document.createElement("option");
     opt.value = String(lvl);
@@ -102,9 +103,8 @@ function populateGoalLevelSelect(currentLevel) {
 
   const desired = Number(currentLevel) + 1;
   sel.value = String(desired);
-
   if (!sel.value) {
-    const firstValid = [...sel.options].find(o => o.value && !o.disabled);
+    const firstValid = [...sel.options].find((o) => o.value && !o.disabled);
     if (firstValid) sel.value = firstValid.value;
   }
 
@@ -115,10 +115,10 @@ function updateGoalPreview() {
   const sel = document.getElementById("cfgGoalLevel");
   const preview = document.getElementById("goalXpPreview");
   if (!sel || !preview || !xpTableCache) return;
-
   const lvl = Number(sel.value);
   const xp = xpForLevelFromCache(lvl);
-  preview.textContent = xp !== null ? `XP total no nível: ${xp.toLocaleString("pt-BR")}` : "";
+  preview.textContent =
+    xp !== null ? `XP total no nível: ${xp.toLocaleString("pt-BR")}` : "";
 }
 
 /* =========================
@@ -129,33 +129,43 @@ async function loadMetrics() {
   try {
     const res = await fetch("/metrics");
     const data = await res.json();
-
     if (!res.ok || data.error) {
       showToast(data.error || "Erro ao carregar métricas.", "error");
       return;
     }
 
     document.getElementById("charName").innerText = data.config.char_name;
-    document.getElementById("info").innerText =
-      `${data.character.vocation} • Level ${data.character.level} • ${data.character.world}`;
-
-    document.getElementById("xp").innerText = Number(data.xp_current).toLocaleString("pt-BR");
-    document.getElementById("remaining").innerText = Number(data.xp_remaining).toLocaleString("pt-BR");
-    document.getElementById("avg").innerText = Number(data.average_xp).toLocaleString("pt-BR");
-    document.getElementById("eta").innerText = data.days_estimate ? `${data.days_estimate} dias` : "—";
+    document.getElementById(
+      "info"
+    ).innerText = `${data.character.vocation} • Level ${data.character.level} • ${data.character.world}`;
+    document.getElementById("xp").innerText = Number(
+      data.xp_current
+    ).toLocaleString("pt-BR");
+    document.getElementById("remaining").innerText = Number(
+      data.xp_remaining
+    ).toLocaleString("pt-BR");
+    document.getElementById("avg").innerText = Number(
+      data.average_xp
+    ).toLocaleString("pt-BR");
+    document.getElementById("eta").innerText = data.days_estimate
+      ? `${data.days_estimate} dias`
+      : "—";
 
     const dailyTitle = document.getElementById("dailyTitle");
     if (dailyTitle) {
       const goalLevel = data.config.goal_level;
-      dailyTitle.innerText = goalLevel ? `Meta diária - Meta Nv. ${goalLevel}` : "Meta diária";
+      dailyTitle.innerText = goalLevel
+        ? `Meta diária - Meta Nv. ${goalLevel}`
+        : "Meta diária";
     }
 
     const warning = document.getElementById("goalWarning");
     const reached = document.getElementById("goalReached");
-
     const goalLevel = data.config.goal_level;
-    const invalidGoal = goalLevel && Number(data.character.level) > Number(goalLevel);
-    const goalReached = goalLevel && Number(data.xp_remaining) <= 0;
+    const invalidGoal =
+      goalLevel && Number(data.character.level) > Number(goalLevel);
+    const goalReached =
+      goalLevel && Number(data.xp_remaining) <= 0;
 
     if (invalidGoal) {
       if (warning) warning.style.display = "block";
@@ -172,13 +182,23 @@ async function loadMetrics() {
     fill.style.width = `${data.daily_progress}%`;
     fill.className = data.daily_progress >= 100 ? "fill success" : "fill";
 
-    document.getElementById("dailyPercent").innerText = `${Number(data.daily_progress).toFixed(1)}%`;
-    document.getElementById("dailyText").innerText =
-      `${Number(data.today_xp).toLocaleString("pt-BR")} / ${Number(data.config.daily_goal).toLocaleString("pt-BR")} XP`;
+    document.getElementById(
+      "dailyPercent"
+    ).innerText = `${Number(data.daily_progress).toFixed(1)}%`;
+    document.getElementById(
+      "dailyText"
+    ).innerText = `${Number(data.today_xp).toLocaleString(
+      "pt-BR"
+    )} / ${Number(data.config.daily_goal).toLocaleString("pt-BR")} XP`;
 
-    const remainingXP = Math.max(0, Number(data.config.daily_goal) - Number(data.today_xp));
+    const remainingXP = Math.max(
+      0,
+      Number(data.config.daily_goal) - Number(data.today_xp)
+    );
     document.getElementById("dailyRemaining").innerText =
-      remainingXP > 0 ? `${remainingXP.toLocaleString("pt-BR")} XP para 100%` : "Meta diária concluída";
+      remainingXP > 0
+        ? `${remainingXP.toLocaleString("pt-BR")} XP para 100%`
+        : "Meta diária concluída";
 
     renderChart(data.daily_log || []);
   } catch (e) {
@@ -201,7 +221,6 @@ function updateXpMode() {
 async function addXP() {
   const input = document.getElementById("xpInput");
   const death = document.getElementById("deathToggle")?.checked;
-
   const xp = sanitizeInt(input?.value);
   if (!xp || xp <= 0) {
     showToast("Digite um valor de XP válido.", "info");
@@ -209,15 +228,14 @@ async function addXP() {
   }
 
   const signed = death ? -xp : xp;
-
   showLoading("Salvando XP...");
+
   try {
     const res = await fetch("/add_xp", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ xp: signed })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ xp: signed }),
     });
-
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) {
       showToast(data.error || "Erro ao registrar XP.", "error");
@@ -237,29 +255,34 @@ async function addXP() {
    Chart
 ========================= */
 function renderChart(log) {
-  const labels = log.map(d => d.date);
-  const values = log.map(d => d.xp);
+  const labels = log.map((d) => d.date);
+  const values = log.map((d) => d.xp);
 
-  const backgroundColors = values.map(v => (v >= 0 ? "rgba(59, 130, 246, 0.8)" : "rgba(239, 68, 68, 0.8)"));
-  const borderColors = values.map(v => (v >= 0 ? "rgba(59, 130, 246, 1)" : "rgba(239, 68, 68, 1)"));
+  const backgroundColors = values.map((v) =>
+    v >= 0 ? "rgba(59, 130, 246, 0.8)" : "rgba(239, 68, 68, 0.8)"
+  );
+  const borderColors = values.map((v) =>
+    v >= 0 ? "rgba(59, 130, 246, 1)" : "rgba(239, 68, 68, 1)"
+  );
 
   if (chart) chart.destroy();
-
   chart = new Chart(document.getElementById("chart"), {
     type: "bar",
     data: {
       labels,
-      datasets: [{
-        label: "XP diária",
-        data: values,
-        backgroundColor: backgroundColors,
-        borderColor: borderColors,
-        borderWidth: 1
-      }]
+      datasets: [
+        {
+          label: "XP diária",
+          data: values,
+          backgroundColor: backgroundColors,
+          borderColor: borderColors,
+          borderWidth: 1,
+        },
+      ],
     },
     options: {
-      scales: { y: { beginAtZero: true } }
-    }
+      scales: { y: { beginAtZero: true } },
+    },
   });
 }
 
@@ -271,7 +294,6 @@ async function openSettings() {
   try {
     const res = await fetch("/config");
     const cfg = await res.json();
-
     if (!res.ok || cfg.error) {
       showToast(cfg.error || "Erro ao abrir configurações.", "error");
       return;
@@ -279,6 +301,7 @@ async function openSettings() {
 
     const cfgName = document.getElementById("cfgName");
     const cfgStart = document.getElementById("cfgStart");
+    const cfgStartNote = document.getElementById("cfgStartNote");
     const cfgDaily = document.getElementById("cfgDaily");
     const goalSel = document.getElementById("cfgGoalLevel");
 
@@ -286,7 +309,19 @@ async function openSettings() {
     cfgStart.value = cfg.xp_start;
     cfgDaily.value = cfg.daily_goal;
 
-    // guarda o nome original para comparar depois
+    const canEditXp = cfg.can_edit_xp_start === true;
+    cfgStart.disabled = !canEditXp;
+
+    if (cfgStartNote) {
+      if (canEditXp) {
+        cfgStartNote.textContent =
+          "Você pode ajustar o XP inicial porque ainda não há histórico registrado para este personagem.";
+      } else {
+        cfgStartNote.textContent =
+          "XP inicial bloqueado: para alterar, é preciso zerar o histórico de XP ou selecionar outro personagem.";
+      }
+    }
+
     window.__originalCharName = cfg.char_name;
     updateCharChangeWarning();
 
@@ -294,7 +329,6 @@ async function openSettings() {
 
     showLoading("Buscando personagem...");
     const currentLevel = await fetchCharacterLevelByName(cfgName.value.trim());
-
     const xpMin = xpForLevelFromCache(currentLevel);
     if (xpMin !== null) {
       cfgStart.min = String(xpMin);
@@ -311,34 +345,35 @@ async function openSettings() {
 
     goalSel.onchange = updateGoalPreview;
 
-    // bind change/typing (para mostrar aviso) + blur (para buscar char)
     if (cfgName.dataset.bound !== "1") {
       cfgName.dataset.bound = "1";
-
       cfgName.addEventListener("input", updateCharChangeWarning);
-
       cfgName.addEventListener("blur", async () => {
         const newName = cfgName.value.trim();
         if (!newName) return;
-
         showLoading("Buscando personagem...");
         try {
           const lvl = await fetchCharacterLevelByName(newName);
-
           const xpMin2 = xpForLevelFromCache(lvl);
           if (xpMin2 === null) {
-            showToast("Tabela de XP não tem esse nível.", "error");
+            showToast(
+              "Tabela de XP não tem esse nível.",
+              "error"
+            );
             return;
           }
-
-          cfgStart.min = String(xpMin2);
-          cfgStart.value = xpMin2;
-
+          if (cfg.can_edit_xp_start === true) {
+            cfgStart.min = String(xpMin2);
+            cfgStart.value = xpMin2;
+          }
           populateGoalLevelSelect(lvl);
           goalSel.value = String(lvl + 1);
           updateGoalPreview();
         } catch (e) {
-          showToast("Não foi possível encontrar esse personagem na API.", "error");
+          showToast(
+            "Não foi possível encontrar esse personagem na API.",
+            "error"
+          );
         } finally {
           hideLoading();
         }
@@ -363,7 +398,8 @@ async function saveSettings() {
   const cfgDaily = document.getElementById("cfgDaily");
   const goalSel = document.getElementById("cfgGoalLevel");
 
-  const changed = window.__originalCharName !== null &&
+  const changed =
+    window.__originalCharName !== null &&
     normalizeName(cfgName.value) !== normalizeName(window.__originalCharName);
 
   if (changed) {
@@ -377,13 +413,13 @@ async function saveSettings() {
   try {
     const res = await fetch("/config", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         char_name: cfgName.value.trim(),
         xp_start: cfgStart.value,
         daily_goal: cfgDaily.value,
-        goal_level: goalSel.value
-      })
+        goal_level: goalSel.value,
+      }),
     });
 
     const data = await res.json().catch(() => ({}));
@@ -392,13 +428,16 @@ async function saveSettings() {
       return;
     }
 
-    // atualiza "original" após salvar
     window.__originalCharName = cfgName.value.trim();
     updateCharChangeWarning();
-
     closeSettings();
     await loadMetrics();
-    showToast(changed ? "Configurações salvas. Histórico zerado." : "Configurações salvas.", "success");
+    showToast(
+      changed
+        ? "Configurações salvas. Histórico zerado."
+        : "Configurações salvas.",
+      "success"
+    );
   } catch (e) {
     showToast("Falha ao salvar.", "error");
   } finally {
@@ -407,7 +446,9 @@ async function saveSettings() {
 }
 
 async function resetXpHistory() {
-  const ok = confirm("Tem certeza que deseja zerar todo o histórico de XP?");
+  const ok = confirm(
+    "Tem certeza que deseja zerar todo o histórico de XP?"
+  );
   if (!ok) return;
 
   showLoading("Zerando histórico...");
@@ -418,7 +459,6 @@ async function resetXpHistory() {
       showToast(data.error || "Erro ao zerar histórico.", "error");
       return;
     }
-
     closeSettings();
     await loadMetrics();
     showToast("Histórico zerado.", "success");

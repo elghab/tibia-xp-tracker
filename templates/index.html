@@ -1,143 +1,157 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tibia XP Tracker</title>
-
-  <link rel="stylesheet" href="/static/css/style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8" />
+    <title>Yonexus - XP Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
-  <div class="header">
-    <button class="settings-btn" onclick="openSettings()">⚙</button>
-    <h1 id="charName">—</h1>
-    <div class="subtitle" id="info">Carregando...</div>
-  </div>
-
-  <div class="container">
-    <div class="stats-grid">
-      <div class="card highlight">
-        <span>XP Atual</span>
-        <h2 id="xp">0</h2>
-      </div>
-
-      <div class="card highlight">
-        <span>XP Restante</span>
-        <h2 id="remaining">0</h2>
-      </div>
-
-      <div class="card highlight">
-        <span>Média diária</span>
-        <h2 id="avg">0</h2>
-      </div>
-
-      <div class="card highlight">
-        <span>Dias estimados</span>
-        <h2 id="eta">—</h2>
-      </div>
-    </div>
-
-    <div class="entry">
-      <h3>Adicionar XP</h3>
-
-      <div class="entry-box">
-        <input type="text" id="xpInput" inputmode="numeric" placeholder="Ex: 1.000.000" />
-        <button id="xpSubmitBtn" onclick="addXP()">Adicionar</button>
-      </div>
-
-      <label class="death-toggle">
-        <input type="checkbox" id="deathToggle" onchange="updateXpMode()" />
-        <span class="skull">☠️</span>
-        Morte (retirar XP)
-      </label>
-    </div>
-
-    <!-- META DIÁRIA -->
-    <div class="daily-goal">
-      <div style="display:flex; justify-content: space-between; align-items:center;">
-        <h3 id="dailyTitle">Meta diária</h3>
-        <span id="dailyPercent" style="color: var(--muted); font-size: 14px;">0%</span>
-      </div>
-
-      <!-- aviso: meta inválida -->
-      <div id="goalWarning" style="display:none; margin-top:10px; color: var(--accent); font-weight: bold;">
-        Nível meta abaixo do nível atual do personagem, por gentileza selecione novo nível meta nas configurações.
-      </div>
-
-      <!-- ✅ aviso: meta batida -->
-      <div id="goalReached" style="display:none; margin-top:10px; color: var(--positive); font-weight: bold;">
-        Você bateu a meta! Selecione uma nova no menu de configurações.
-      </div>
-
-      <div class="progress-bar">
-        <div id="progressFill" class="fill"></div>
-      </div>
-
-      <div id="dailyInfoLine" style="display:flex; justify-content: space-between; margin-top: 6px; font-size: 14px;">
-        <span id="dailyText">0 / 0 XP</span>
-        <span id="dailyRemaining" style="color: var(--muted);">0 XP para 100%</span>
-      </div>
-    </div>
-
-    <div class="chart-section">
-      <canvas id="chart"></canvas>
-    </div>
-  </div>
-
-  <div class="footer">
-    Tibia XP Tracker • Feito de Tibiano para Tibiano
-  </div>
-
-  <!-- TOAST -->
-  <div id="toast" class="toast" aria-live="polite"></div>
-
-  <!-- OVERLAY LOADING -->
-  <div id="loadingOverlay" class="loading-overlay" aria-busy="false" style="display:none;">
-    <div class="loading-box">
-      <div class="spinner"></div>
-      <div id="loadingText">Carregando...</div>
-    </div>
-  </div>
-
-  <!-- MODAL CONFIG -->
-  <div id="settingsModal" class="modal">
-    <div class="modal-content">
-      <h3>Configurações</h3>
-
-      <label>Nome do char</label>
-      <input id="cfgName" type="text" autocomplete="off" />
-      
-<div id="charChangeWarning"
-     style="display:none; margin-top:10px; color: var(--accent); font-weight:bold;">
-  Ao trocar o personagem e salvar, o histórico de XP será zerado.
-</div>
-
-      <label>XP inicial</label>
-      <input id="cfgStart" type="number" />
-
-      <label>Nível meta</label>
-      <select id="cfgGoalLevel"></select>
-      <small id="goalXpPreview" style="color: var(--muted); display:block; margin-top:6px;"></small>
-
-      <label>Meta diária</label>
-      <input id="cfgDaily" type="number" />
-
-      <div class="modal-actions" style="justify-content: space-between;">
-        <button onclick="resetXpHistory()"
-                style="background: transparent; border: 1px solid var(--accent); color: var(--accent);">
-          Zerar histórico
-        </button>
-
-        <div style="display:flex; gap:10px;">
-          <button onclick="closeSettings()">Cancelar</button>
-          <button id="saveSettingsBtn" class="save" onclick="saveSettings()">Salvar</button>
+    <!-- LOADING OVERLAY -->
+    <div id="loadingOverlay" class="loading-overlay" aria-busy="false">
+        <div class="loading-box">
+            <div class="spinner"></div>
+            <div id="loadingText">Carregando...</div>
         </div>
-      </div>
     </div>
-  </div>
 
-  <script src="/static/js/main.js"></script>
+    <!-- TOAST -->
+    <div id="toast" class="toast"></div>
+
+    <!-- HEADER -->
+    <header class="header">
+
+        <div class="tracker-header">
+            <div class="tracker-left">
+                <h2 id="charName">Personagem</h2>
+                <div id="info" class="tracker-info">Vocação • Level • Mundo</div>
+            </div>
+
+            <div class="tracker-right">
+                <button class="btn-metrics" onclick="window.location.href='/more-metrics'">
+                    Mais métricas
+                </button>
+
+                <button class="btn-settings" onclick="openSettings()">
+                    <span>⚙</span> Configurações
+                </button>
+
+                <form action="{{ url_for('logout') }}" method="post" class="logout-form">
+                    <button type="submit" class="btn-logout-tracker">Sair</button>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- STATS -->
+        <section class="stats-grid">
+            <div class="card highlight">
+                <span>XP Atual</span>
+                <h2 id="xp">0</h2>
+            </div>
+            <div class="card">
+                <span>XP Restante</span>
+                <h2 id="remaining">0</h2>
+            </div>
+            <div class="card">
+                <span>Média XP/dia</span>
+                <h2 id="avg">0</h2>
+            </div>
+            <div class="card">
+                <span>Estimativa de dias</span>
+                <h2 id="eta">—</h2>
+            </div>
+        </section>
+
+        <!-- META DIÁRIA -->
+        <section class="daily-goal">
+            <h3 id="dailyTitle">Meta diária</h3>
+            <div id="goalWarning" class="extra-metrics" style="display:none;">
+                <h3>Atenção</h3>
+                <p>
+                    O nível atual do personagem já ultrapassou o nível meta configurado.
+                    Considere ajustar sua meta nas configurações.
+                </p>
+            </div>
+            <div id="goalReached" class="extra-metrics" style="display:none;">
+                <h3>Meta alcançada 🎉</h3>
+                <p>
+                    Você atingiu ou ultrapassou a meta de XP configurada. Ajuste a meta para um novo objetivo.
+                </p>
+            </div>
+
+            <div class="progress-bar">
+                <div id="progressFill" class="fill"></div>
+            </div>
+            <p class="daily-text">
+                <span id="dailyPercent">0%</span> •
+                <span id="dailyText">0 / 0 XP</span>
+            </p>
+            <p id="dailyRemaining" class="daily-remaining"></p>
+        </section>
+
+        <!-- ENTRADA DE XP -->
+        <section class="entry">
+            <h3>Registrar XP do dia</h3>
+            <div class="entry-box">
+                <input id="xpInput" type="text" placeholder="Ex: 250000" />
+                <button id="xpSubmitBtn" onclick="addXP()">Adicionar</button>
+            </div>
+            <label class="death-toggle">
+                <input id="deathToggle" type="checkbox" onchange="updateXpMode()" />
+                <span class="skull">💀</span>
+                <span>Marcar como morte (retirar XP)</span>
+            </label>
+        </section>
+
+        <!-- GRÁFICO -->
+        <section class="chart-section">
+            <h3>Histórico de XP diária</h3>
+            <canvas id="chart" height="120"></canvas>
+        </section>
+
+        <section class="extra-metrics">
+            <h3>Detalhes adicionais</h3>
+            <p>Use o histórico para entender seus melhores dias de up e ajustar sua meta diária.</p>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>Yonexus • Fã site não oficial de Tibia.</p>
+    </footer>
+
+    <!-- MODAL CONFIGURAÇÕES -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <h2>Configurações</h2>
+
+            <label for="cfgName">Nome do personagem</label>
+            <input id="cfgName" type="text" />
+            <div id="charChangeWarning" class="form-note" style="display:none;">
+                Ao alterar o nome do personagem e salvar, todo o histórico de XP será zerado.
+            </div>
+
+            <label for="cfgStart">XP inicial</label>
+            <input id="cfgStart" type="number" />
+            <div id="cfgStartNote" class="cfg-note"></div>
+
+            <label for="cfgDaily">Meta diária de XP</label>
+            <input id="cfgDaily" type="number" />
+
+            <label for="cfgGoalLevel">Nível meta</label>
+            <select id="cfgGoalLevel"></select>
+            <div id="goalXpPreview" class="form-note"></div>
+
+            <div class="modal-actions">
+                <button type="button" onclick="resetXpHistory()">Zerar histórico</button>
+                <button type="button" onclick="closeSettings()">Cancelar</button>
+                <button type="button" class="save" onclick="saveSettings()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

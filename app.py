@@ -12,6 +12,7 @@ import requests
 from datetime import date
 
 app = Flask(__name__)
+
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
 # SQLite local (arquivo). Depois você troca DATABASE_URL para Postgres.
@@ -26,10 +27,8 @@ db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.login_view = "index"
 login_manager.init_app(app)
-
 login_manager.login_message = "Faça login para acessar esta página."
 login_manager.login_message_category = "error"
-
 
 XP_TABLE_FILE = os.path.join(app.root_path, "data", "experience_table_tibia.json")
 
@@ -105,7 +104,6 @@ class Character(db.Model):
 class XpLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False, index=True)
-
     date = db.Column(db.String(10), nullable=False)  # YYYY-MM-DD
     xp = db.Column(db.Integer, nullable=False, default=0)
 
@@ -117,7 +115,6 @@ def load_user(user_id):
         return db.session.get(User, int(user_id))
     except Exception:
         return None
-
 
 # =========================
 # Helpers
@@ -145,7 +142,6 @@ def get_character_info(name):
         r = _http.get(url, timeout=10)
         r.raise_for_status()
         char = r.json()["character"]["character"]
-
         info = {
             "vocation": char["vocation"],
             "level": int(char["level"]),
@@ -168,7 +164,6 @@ with app.app_context():
     ensure_data_dir()
     db.create_all()
 
-
 # =========================
 # Rotas públicas
 # =========================
@@ -181,6 +176,10 @@ def index():
 def xp_table_public():
     return jsonify(load_xp_table())
 
+@app.route("/more-metrics")
+@login_required
+def more_metrics():
+    return render_template("more_metrics.html")
 
 @app.route("/register", methods=["POST"])
 def register():
@@ -294,7 +293,6 @@ def logout():
     logout_user()
     return redirect(url_for("index"))
 
-
 # =========================
 # Rotas do app (protegidas)
 # =========================
@@ -389,12 +387,14 @@ def config():
         return jsonify({"error": "Nenhum personagem cadastrado."}), 400
 
     if request.method == "GET":
+        has_history = XpLog.query.filter_by(character_id=ch.id).first() is not None
         return jsonify({
             "char_name": ch.char_name,
             "xp_start": ch.xp_start,
             "xp_goal": ch.xp_goal,
             "daily_goal": ch.daily_goal,
-            "goal_level": ch.goal_level
+            "goal_level": ch.goal_level,
+            "can_edit_xp_start": not has_history  # ✅ nova flag
         })
 
     data = request.json or {}
@@ -411,19 +411,31 @@ def config():
     except Exception:
         return jsonify({"error": "Não foi possível validar esse personagem na API agora. Tente novamente."}), 400
 
-    # xp_start: mínimo do nível atual
+    # xp_start só pode mudar se NÃO houver histórico de XP
+    has_history = XpLog.query.filter_by(character_id=ch.id).first() is not None
+
+    try:
+        requested_xp_start = int(data.get("xp_start", ch.xp_start))
+    except Exception:
+        return jsonify({"error": "XP inicial inválida."}), 400
+
+    if has_history and requested_xp_start != ch.xp_start:
+        return jsonify({
+            "error": "XP inicial só pode ser alterado quando não houver histórico de XP. "
+                     "Zere o histórico ou selecione outro personagem."
+        }), 400
+
+    # mínimo do nível atual
     try:
         xp_min = int(xp_for_level(current_level))
     except Exception:
         return jsonify({"error": "Tabela de XP não possui o nível atual do personagem."}), 400
 
-    try:
-        new_xp_start = int(data.get("xp_start", ch.xp_start))
-    except Exception:
-        return jsonify({"error": "XP inicial inválida."}), 400
-
+    new_xp_start = requested_xp_start
     if new_xp_start < xp_min:
-        return jsonify({"error": f"XP inicial não pode ser menor que {xp_min} (mínimo do nível {current_level})."}), 400
+        return jsonify({
+            "error": f"XP inicial não pode ser menor que {xp_min} (mínimo do nível {current_level})."
+        }), 400
 
     try:
         new_daily_goal = int(data.get("daily_goal", ch.daily_goal))
@@ -454,7 +466,7 @@ def config():
     ch.goal_level = desired_goal_level
     ch.xp_goal = new_xp_goal
 
-    # ✅ NOVO: se mudou o nome do personagem, zera histórico
+    # se mudou o personagem, zera histórico
     if (old_name or "").strip().lower() != (new_name or "").strip().lower():
         XpLog.query.filter_by(character_id=ch.id).delete()
 

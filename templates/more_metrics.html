@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mais Métricas - Yonexus</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/metrics.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- LOADING OVERLAY -->
+    <div id="loadingOverlay" class="loading-overlay" aria-busy="false">
+        <div class="loading-box">
+            <div class="spinner"></div>
+            <div id="loadingText">Carregando...</div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="toast"></div>
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-content">
+            <h1>Mais Métricas</h1>
+            <p class="subtitle">Análise detalhada do seu progresso no Tibia</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-back" onclick="window.location.href='/xp-tracker'">
+                ← Voltar ao Tracker
+            </button>
+            <form action="{{ url_for('logout') }}" method="post" style="display:inline;">
+                <button type="submit" class="btn-logout">Sair</button>
+            </form>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- STATS GERAIS -->
+        <section class="metrics-section">
+            <h2>Resumo Geral</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">XP Atual</div>
+                    <div class="stat-value" id="statXpCurrent">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">XP Meta</div>
+                    <div class="stat-value" id="statXpGoal">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Progresso</div>
+                    <div class="stat-value" id="statProgress">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Dias de Tracking</div>
+                    <div class="stat-value" id="statDays">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Média XP/Dia</div>
+                    <div class="stat-value" id="statAvg">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Melhor Dia</div>
+                    <div class="stat-value" id="statBest">0</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GRÁFICO CUMULATIVO -->
+        <section class="metrics-section">
+            <h2>Progresso Cumulativo</h2>
+            <div class="chart-container">
+                <canvas id="cumulativeChart"></canvas>
+            </div>
+        </section>
+
+        <!-- GRÁFICO DIÁRIO COMPARATIVO -->
+        <section class="metrics-section">
+            <h2>XP Diária</h2>
+            <div class="chart-container">
+                <canvas id="dailyChart"></canvas>
+            </div>
+        </section>
+
+        <!-- TABELA DE HISTÓRICO -->
+        <section class="metrics-section">
+            <h2>Histórico Completo</h2>
+            <div class="table-container">
+                <table id="historyTable" class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>XP Ganho</th>
+                            <th>XP Acumulado</th>
+                            <th>% do Progresso</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Preenchido por JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ANÁLISE SEMANAL -->
+        <section class="metrics-section">
+            <h2>Análise por Dia da Semana</h2>
+            <div class="chart-container">
+                <canvas id="weekdayChart"></canvas>
+            </div>
+            <div class="weekday-stats" id="weekdayStats">
+                <!-- Preenchido por JS -->
+            </div>
+        </section>
+
+        <!-- METAS E PLANEJAMENTO -->
+        <section class="metrics-section">
+            <h2>Projeções</h2>
+            <div class="projections-grid">
+                <div class="projection-card">
+                    <h3>Dias para Meta</h3>
+                    <div class="projection-value" id="projDays">—</div>
+                    <p class="projection-date" id="projDate"></p>
+                </div>
+                <div class="projection-card">
+                    <h3>Data Estimada</h3>
+                    <div class="projection-value" id="projDateEstimate">—</div>
+                    <p class="projection-text">Se manter a média atual</p>
+                </div>
+                <div class="projection-card">
+                    <h3>XP Necessário</h3>
+                    <div class="projection-value" id="projXpNeeded">0</div>
+                    <p class="projection-text">até atingir a meta</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- TOP 5 MELHORES DIAS -->
+        <section class="metrics-section">
+            <h2>Top 5 Melhores Dias</h2>
+            <div class="top-days" id="topDays">
+                <!-- Preenchido por JS -->
+            </div>
+        </section>
+
+        <!-- CONSISTÊNCIA -->
+        <section class="metrics-section">
+            <h2>Consistência & Padrões</h2>
+            <div class="consistency-grid">
+                <div class="consistency-card">
+                    <h3>Dias com XP</h3>
+                    <div class="consistency-value" id="daysWithXp">0</div>
+                    <p class="consistency-label">dias com ganho registrado</p>
+                </div>
+                <div class="consistency-card">
+                    <h3>Taxa de Registro</h3>
+                    <div class="consistency-value" id="registrationRate">0%</div>
+                    <p class="consistency-label">de dias com histórico</p>
+                </div>
+                <div class="consistency-card">
+                    <h3>Variância</h3>
+                    <div class="consistency-value" id="variance">0</div>
+                    <p class="consistency-label">desvio padrão do XP/dia</p>
+                </div>
+                <div class="consistency-card">
+                    <h3>Mediana</h3>
+                    <div class="consistency-value" id="median">0</div>
+                    <p class="consistency-label">XP no dia mediano</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>Yonexus • Análise detalhada de evolução para Tibia</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/metrics.js') }}"></script>
+</body>
+</html>
