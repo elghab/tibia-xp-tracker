@@ -6,8 +6,86 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
+<style>
+  .char-line{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+  .vip-badge {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    border: 1px solid rgba(255,255,255,.12);
+    line-height: 1;
+  }
+  .vip-on { background: rgba(250, 204, 21, 0.18); color: #facc15; border-color: rgba(250, 204, 21, 0.45); }
+  .vip-off { background: rgba(148, 163, 184, 0.12); color: #94a3b8; border-color: rgba(148, 163, 184, 0.25); }
+
+  .char-tools{
+    margin-top: 6px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .char-tools select{
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(2,6,23,.7);
+    color: #e5e7eb;
+    outline: none;
+  }
+
+  .flash-wrap { margin: 12px auto 0; max-width: 1100px; padding: 0 16px; }
+  .flash-msg {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #fecaca;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .form-group { margin-top: 12px; }
+  .form-group label { display:block; margin-bottom: 6px; opacity: .9; }
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(2,6,23,.7);
+    color: #e5e7eb;
+    outline: none;
+  }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 720px){ .form-row-2 { grid-template-columns: 1fr; } }
+
+  .form-inline-help { margin-top: 6px; font-size: 12px; opacity: .8; }
+  .char-preview {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(59, 130, 246, 0.10);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+  }
+  .error-text {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #fecaca;
+    font-weight: 600;
+  }
+
+  .modal-actions{ display:flex; gap:10px; margin-top:14px; }
+  .modal-actions button{ flex:1; }
+</style>
+
 <body>
-    <!-- LOADING OVERLAY -->
     <div id="loadingOverlay" class="loading-overlay" aria-busy="false">
         <div class="loading-box">
             <div class="spinner"></div>
@@ -15,16 +93,53 @@
         </div>
     </div>
 
-    <!-- TOAST -->
     <div id="toast" class="toast"></div>
 
-    <!-- HEADER -->
     <header class="header">
-
         <div class="tracker-header">
             <div class="tracker-left">
-                <h2 id="charName">Personagem</h2>
+
+                <div class="char-line">
+                    <h2 id="charName">Personagem</h2>
+
+                    {% if current_user.is_vip() %}
+                        <span class="vip-badge vip-on">
+                            VIP ATIVO{% if current_user.vip_until %} • até {{ current_user.vip_until.strftime('%d/%m/%Y') }}{% endif %}
+                        </span>
+                    {% else %}
+                        <span class="vip-badge vip-off">CONTA FREE</span>
+                    {% endif %}
+                </div>
+
                 <div id="info" class="tracker-info">Vocação • Level • Mundo</div>
+
+                <div class="char-tools">
+                    <form action="{{ url_for('characters_select') }}" method="post">
+                        <select name="character_id" onchange="this.form.submit()">
+                            {% for c in current_user.characters %}
+                                <option value="{{ c.id }}"
+                                  {% if current_user.active_character_id == c.id %}selected{% endif %}>
+                                  {{ c.char_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+
+                    {% if current_user.characters|length > 1 %}
+                    <form action="{{ url_for('characters_delete') }}" method="post"
+                          onsubmit="return confirm('Excluir este personagem e todo o histórico dele?');">
+                        <input type="hidden" name="character_id" value="{{ current_user.active_character_id }}">
+                        <button type="submit" class="btn-logout-tracker">Excluir</button>
+                    </form>
+                    {% endif %}
+
+                    {% if current_user.is_vip() %}
+                      <button type="button" class="btn-settings" onclick="openAddChar()">
+                          + Personagem
+                      </button>
+                    {% endif %}
+                </div>
+
             </div>
 
             <div class="tracker-right">
@@ -43,8 +158,15 @@
         </div>
     </header>
 
+    <div class="flash-wrap">
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="flash-msg">{{ messages[-1] }}</div>
+        {% endif %}
+      {% endwith %}
+    </div>
+
     <main class="container">
-        <!-- STATS -->
         <section class="stats-grid">
             <div class="card highlight">
                 <span>XP Atual</span>
@@ -64,7 +186,6 @@
             </div>
         </section>
 
-        <!-- META DIÁRIA -->
         <section class="daily-goal">
             <h3 id="dailyTitle">Meta diária</h3>
             <div id="goalWarning" class="extra-metrics" style="display:none;">
@@ -91,7 +212,6 @@
             <p id="dailyRemaining" class="daily-remaining"></p>
         </section>
 
-        <!-- ENTRADA DE XP -->
         <section class="entry">
             <h3>Registrar XP do dia</h3>
             <div class="entry-box">
@@ -105,7 +225,6 @@
             </label>
         </section>
 
-        <!-- GRÁFICO -->
         <section class="chart-section">
             <h3>Histórico de XP diária</h3>
             <canvas id="chart" height="120"></canvas>
@@ -117,12 +236,10 @@
         </section>
     </main>
 
-    <!-- FOOTER -->
     <footer class="footer">
         <p>Yonexus • Fã site não oficial de Tibia.</p>
     </footer>
 
-    <!-- MODAL CONFIGURAÇÕES -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <h2>Configurações</h2>
@@ -152,6 +269,193 @@
         </div>
     </div>
 
+    {% if current_user.is_vip() %}
+    <div id="addCharModal" class="modal">
+        <div class="modal-content">
+            <h2>Adicionar personagem</h2>
+            <p class="modal-subtitle">VIP: adicione outro personagem e alterne quando quiser.</p>
+
+            <form action="{{ url_for('add_character') }}" method="post">
+                <div class="form-group">
+                    <label>Nome do personagem (Tibia)</label>
+                    <input type="text" id="addCharName" name="char_name" required onblur="onAddCharNameBlur()">
+                    <div class="form-inline-help">
+                        Use o nome exato do personagem, incluindo espaços.
+                    </div>
+                    <div id="addCharPreview" class="char-preview" style="display:none;"></div>
+                    <div id="addCharError" class="error-text" style="display:none;"></div>
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label>XP inicial (automático)</label>
+                        <input type="number" id="addXpStart" name="xp_start" min="0">
+                        <div class="form-inline-help">
+                            XP mínimo do nível atual do personagem. Você pode ajustar para cima.
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Nível meta</label>
+                        <select id="addGoalLevel" name="goal_level"></select>
+                        <div class="form-inline-help">
+                            Deve ser maior que o nível atual.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Meta de XP diária</label>
+                    <input type="number" id="addDailyGoal" name="daily_goal">
+                    <div class="form-inline-help">
+                        Padrão: 1.000.000 (você pode mudar depois nas configurações).
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div id="addGoalXpPreview" class="form-inline-help"></div>
+                </div>
+
+                <button type="submit" id="addCharSubmitBtn" class="btn-settings" disabled>
+                    Adicionar
+                </button>
+
+                <div class="modal-actions">
+                    <button type="button" onclick="closeAddChar()">Fechar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    {% if current_user.is_vip() %}
+    <script>
+      function openAddChar(){
+        document.getElementById('addCharModal').style.display = 'flex';
+        const i = document.getElementById('addCharName');
+        if (i) i.focus();
+      }
+      function closeAddChar(){
+        document.getElementById('addCharModal').style.display = 'none';
+      }
+      document.addEventListener('click', (e) => {
+        const m = document.getElementById('addCharModal');
+        if (m && e.target === m) closeAddChar();
+      });
+
+      async function fetchCharacterFromTibia(charName) {
+        const url = `https://api.tibiadata.com/v4/character/${encodeURIComponent(charName)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Falha na API do Tibia.");
+        const j = await res.json();
+        if (!j || !j.character || !j.character.character) throw new Error("Personagem não encontrado.");
+        return j.character.character;
+      }
+
+      function xpForLevelFromTable(table, level) {
+        const row = (table || []).find(r => Number(r.level) === Number(level));
+        return row ? Number(row.experience) : null;
+      }
+
+      async function updateAddGoalXpPreviewFromSelect(cachedTable) {
+        const goalSelect = document.getElementById("addGoalLevel");
+        const preview = document.getElementById("addGoalXpPreview");
+        if (!goalSelect || !preview) return;
+
+        try {
+          const xpTable = cachedTable || (await loadXpTable());
+          const lvl = Number(goalSelect.value);
+          const xp = xpForLevelFromTable(xpTable, lvl);
+          preview.textContent = xp !== null ? `XP total no nível meta: ${xp.toLocaleString("pt-BR")}` : "";
+        } catch {
+          preview.textContent = "";
+        }
+      }
+
+      async function onAddCharNameBlur() {
+        const nameInput = document.getElementById("addCharName");
+        const preview = document.getElementById("addCharPreview");
+        const errorBox = document.getElementById("addCharError");
+        const xpInput = document.getElementById("addXpStart");
+        const goalSelect = document.getElementById("addGoalLevel");
+        const submitBtn = document.getElementById("addCharSubmitBtn");
+
+        const rawName = (nameInput.value || "").trim();
+        if (!rawName) {
+          preview.style.display = "none";
+          errorBox.style.display = "none";
+          submitBtn.disabled = true;
+          return;
+        }
+
+        preview.style.display = "none";
+        errorBox.style.display = "none";
+        submitBtn.disabled = true;
+        goalSelect.innerHTML = "";
+        xpInput.value = "";
+        document.getElementById("addGoalXpPreview").textContent = "";
+
+        try {
+          showLoading("Buscando personagem...");
+
+          const [charData, xpTable] = await Promise.all([
+            fetchCharacterFromTibia(rawName),
+            loadXpTable(),
+          ]);
+
+          const lvl = Number(charData.level);
+          const xpMin = xpForLevelFromTable(xpTable, lvl);
+          if (xpMin === null) throw new Error("Tabela de XP não possui o nível atual do personagem.");
+
+          preview.innerHTML =
+            `Personagem: <strong>${charData.name}</strong><br>` +
+            `${charData.vocation} • Level ${charData.level} • ${charData.world}`;
+          preview.style.display = "block";
+
+          xpInput.min = String(xpMin);
+          xpInput.value = xpMin;
+
+          const daily = document.getElementById("addDailyGoal");
+          if (!daily.value) daily.value = 1000000;
+
+          goalSelect.innerHTML = "";
+          xpTable.forEach((row) => {
+            const lv = Number(row.level);
+            const opt = document.createElement("option");
+            opt.value = String(lv);
+            opt.textContent = `Level ${lv}`;
+            if (lv <= lvl) opt.disabled = true;
+            goalSelect.appendChild(opt);
+          });
+
+          let desired = lvl + 10;
+          const desiredRow = xpTable.find((r) => Number(r.level) === desired);
+          if (!desiredRow) {
+            const firstValid = xpTable.find((r) => Number(r.level) > lvl);
+            desired = firstValid ? Number(firstValid.level) : (lvl + 1);
+          }
+          goalSelect.value = String(desired);
+
+          await updateAddGoalXpPreviewFromSelect(xpTable);
+          submitBtn.disabled = false;
+        } catch (err) {
+          errorBox.textContent = err?.message || "Não foi possível encontrar esse personagem na API.";
+          errorBox.style.display = "block";
+          preview.style.display = "none";
+          submitBtn.disabled = true;
+        } finally {
+          hideLoading();
+        }
+      }
+
+      document.addEventListener("change", async (e) => {
+        if (e.target && e.target.id === "addGoalLevel") {
+          await updateAddGoalXpPreviewFromSelect();
+        }
+      });
+    </script>
+    {% endif %}
 </body>
 </html>

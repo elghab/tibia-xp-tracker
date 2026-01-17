@@ -436,6 +436,15 @@ body {
   border-top-color: var(--accent);
   animation: spin 0.9s linear infinite;
 }
+.char-line{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap; /* se a tela for pequena, quebra bonitinho */
+}
+
+/* remove o comportamento de centralizar / empurrar pra baixo */
+.vip-status { margin: 0; justify-content: flex-start; }
 
 @keyframes spin {
   to {

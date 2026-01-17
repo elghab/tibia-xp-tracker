@@ -234,15 +234,16 @@
         </div>
     </div>
 
-    <!-- REGISTER MODAL -->
+    <!-- REGISTER MODAL (AGORA EM 2 ETAPAS) -->
     <div id="registerModal" class="modal">
         <div class="modal-content">
             <button class="close-modal" onclick="closeModal('register')">✕</button>
-            <h2>Criar Conta</h2>
-            <p class="modal-subtitle">
-                Configure seu personagem do Tibia e comece a rastrear sua evolução de XP.
-            </p>
-            <form onsubmit="submitRegister(event)">
+
+            <!-- ETAPA 1 -->
+            <div id="regStep1">
+                <h2>Criar Conta</h2>
+                <p class="modal-subtitle">Etapa 1 de 2 • Conta</p>
+
                 <div class="form-group">
                     <label>Usuário</label>
                     <input type="text" id="regUsername" required>
@@ -258,54 +259,81 @@
                     <input type="password" id="regPassword" required>
                 </div>
 
-                <div class="form-group">
-                    <label>Nome do personagem (Tibia)</label>
-                    <input type="text" id="regCharName" required onblur="onCharNameBlur()">
-                    <div class="form-inline-help">
-                        Use o nome exato do personagem, incluindo espaços.
-                    </div>
-                    <div id="charPreview" class="char-preview" style="display:none;"></div>
-                    <div id="charError" class="error-text" style="display:none;"></div>
-                </div>
-
-                <div class="form-row-2">
-                    <div class="form-group">
-                        <label>XP inicial (automático)</label>
-                        <input type="number" id="regXpStart" min="0">
-                        <div class="form-inline-help">
-                            XP mínimo do nível atual do personagem. Você pode ajustar para cima.
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Nível meta</label>
-                        <select id="regGoalLevel"></select>
-                        <div class="form-inline-help">
-                            Deve ser maior que o nível atual.
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Meta de XP diária</label>
-                    <input type="number" id="regDailyGoal">
-                    <div class="form-inline-help">
-                        Padrão: 1.000.000 (você pode mudar depois nas configurações).
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <div id="goalXpPreview" class="form-inline-help"></div>
-                </div>
-
-                <button type="submit" id="regSubmitBtn" class="form-submit" disabled>
-                    Criar Conta
+                <button type="button" class="form-submit" onclick="goToRegStep2()">
+                    Próximo
                 </button>
 
                 <div class="toggle-form">
                     Já tem conta? <a onclick="switchModal('login')">Fazer Login</a>
                 </div>
-            </form>
+            </div>
+
+            <!-- ETAPA 2 -->
+            <div id="regStep2" style="display:none;">
+                <h2>Configurar Personagem</h2>
+                <p class="modal-subtitle">Etapa 2 de 2 • Tibia</p>
+
+                <!-- mantém o mesmo submitRegister -->
+                <form onsubmit="submitRegister(event)">
+                    <div class="form-group">
+                        <label>Nome do personagem (Tibia)</label>
+                        <input type="text" id="regCharName" required onblur="onCharNameBlur()">
+                        <div class="form-inline-help">
+                            Use o nome exato do personagem, incluindo espaços.
+                        </div>
+                        <div id="charPreview" class="char-preview" style="display:none;"></div>
+                        <div id="charError" class="error-text" style="display:none;"></div>
+                    </div>
+
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label>XP inicial (automático)</label>
+                            <input type="number" id="regXpStart" min="0">
+                            <div class="form-inline-help">
+                                XP mínimo do nível atual do personagem. Você pode ajustar para cima.
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Nível meta</label>
+                            <select id="regGoalLevel"></select>
+                            <div class="form-inline-help">
+                                Deve ser maior que o nível atual.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Meta de XP diária</label>
+                        <input type="number" id="regDailyGoal">
+                        <div class="form-inline-help">
+                            Padrão: 1.000.000 (você pode mudar depois nas configurações).
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div id="goalXpPreview" class="form-inline-help"></div>
+                    </div>
+
+                    <button type="submit" id="regSubmitBtn" class="form-submit" disabled>
+                        Criar Conta
+                    </button>
+
+                    <button
+                        type="button"
+                        class="form-submit"
+                        style="margin-top:8px;background:#020617;color:#e5e7eb;border:1px solid var(--border);"
+                        onclick="goToRegStep1()"
+                    >
+                        Voltar
+                    </button>
+
+                    <div class="toggle-form">
+                        Já tem conta? <a onclick="switchModal('login')">Fazer Login</a>
+                    </div>
+                </form>
+            </div>
+
         </div>
     </div>
 

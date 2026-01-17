@@ -1,11 +1,16 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_login import (
+    LoginManager,
+    UserMixin,
+    login_user,
+    logout_user,
+    login_required,
+    current_user,
+)
 from werkzeug.security import generate_password_hash, check_password_hash
-
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
-
 import os
 import json
 import requests
@@ -15,10 +20,9 @@ app = Flask(__name__)
 
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
-# SQLite local (arquivo). Depois você troca DATABASE_URL para Postgres.
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
     "DATABASE_URL",
-    "sqlite:///" + os.path.join(app.root_path, "data", "app.db")
+    "sqlite:///" + os.path.join(app.root_path, "data", "app.db"),
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -32,9 +36,7 @@ login_manager.login_message_category = "error"
 
 XP_TABLE_FILE = os.path.join(app.root_path, "data", "experience_table_tibia.json")
 
-# =========================
-# Anti-cache (corrige “voltar e ver página antiga”)
-# =========================
+
 @app.after_request
 def add_no_cache_headers(response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -42,26 +44,21 @@ def add_no_cache_headers(response):
     response.headers["Expires"] = "0"
     return response
 
-# =========================
-# Requests Session com retry (para 503/5xx/429)
-# =========================
+
 _retry = Retry(
     total=3,
     backoff_factor=0.6,
     status_forcelist=[429, 500, 502, 503, 504],
-    allowed_methods=["GET"]
+    allowed_methods=["GET"],
 )
 
 _http = requests.Session()
 _http.mount("https://", HTTPAdapter(max_retries=_retry))
 _http.mount("http://", HTTPAdapter(max_retries=_retry))
 
-# cache simples em memória: evita /metrics cair quando a API oscila
 CHAR_INFO_CACHE = {}  # name -> dict {vocation, level, world}
 
-# =========================
-# Models
-# =========================
+
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
 
@@ -69,11 +66,14 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
 
+    vip_until = db.Column(db.Date, nullable=True)  # NULL = free
+    active_character_id = db.Column(db.Integer, nullable=True)
+
     characters = db.relationship(
         "Character",
         backref="user",
         lazy=True,
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
     )
 
     def set_password(self, password_plain: str):
@@ -82,9 +82,13 @@ class User(db.Model, UserMixin):
     def check_password(self, password_plain: str) -> bool:
         return check_password_hash(self.password_hash, password_plain)
 
+    def is_vip(self) -> bool:
+        return self.vip_until is not None and self.vip_until >= date.today()
+
 
 class Character(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
 
     char_name = db.Column(db.String(80), nullable=False)
@@ -97,12 +101,13 @@ class Character(db.Model):
         "XpLog",
         backref="character",
         lazy=True,
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
     )
 
 
 class XpLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+
     character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False, index=True)
     date = db.Column(db.String(10), nullable=False)  # YYYY-MM-DD
     xp = db.Column(db.Integer, nullable=False, default=0)
@@ -110,15 +115,12 @@ class XpLog(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    # SQLAlchemy 2.x: Session.get
     try:
         return db.session.get(User, int(user_id))
     except Exception:
         return None
 
-# =========================
-# Helpers
-# =========================
+
 def ensure_data_dir():
     os.makedirs(os.path.join(app.root_path, "data"), exist_ok=True)
 
@@ -145,7 +147,7 @@ def get_character_info(name):
         info = {
             "vocation": char["vocation"],
             "level": int(char["level"]),
-            "world": char["world"]
+            "world": char["world"],
         }
         CHAR_INFO_CACHE[name] = info
         return info
@@ -156,17 +158,27 @@ def get_character_info(name):
 
 
 def get_current_character() -> Character:
-    return Character.query.filter_by(user_id=current_user.id).first()
+    active_id = getattr(current_user, "active_character_id", None)
+    if active_id:
+        ch = Character.query.filter_by(user_id=current_user.id, id=active_id).first()
+        if ch:
+            return ch
+
+    ch = Character.query.filter_by(user_id=current_user.id).first()
+    if ch:
+        try:
+            current_user.active_character_id = ch.id
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+    return ch
 
 
-# cria tabelas ao iniciar (modo simples)
 with app.app_context():
     ensure_data_dir()
     db.create_all()
 
-# =========================
-# Rotas públicas
-# =========================
+
 @app.route("/")
 def index():
     return render_template("home.html")
@@ -176,19 +188,14 @@ def index():
 def xp_table_public():
     return jsonify(load_xp_table())
 
-@app.route("/more-metrics")
-@login_required
-def more_metrics():
-    return render_template("more_metrics.html")
 
 @app.route("/register", methods=["POST"])
 def register():
-    username = request.form.get("username", "").strip()
-    email = request.form.get("email", "").strip().lower()
-    password = request.form.get("password", "")
+    username = (request.form.get("username", "") or "").strip().lower()
+    email = (request.form.get("email", "") or "").strip().lower()
+    password = request.form.get("password", "") or ""
 
-    char_name = request.form.get("char_name", "").strip()
-
+    char_name = (request.form.get("char_name", "") or "").strip()
     xp_start_raw = (request.form.get("xp_start", "") or "").strip()
     goal_level_raw = (request.form.get("goal_level", "") or "").strip()
     daily_goal_raw = (request.form.get("daily_goal", "") or "").strip()
@@ -205,7 +212,6 @@ def register():
         flash("Usuário ou email já cadastrado.")
         return redirect(url_for("index"))
 
-    # fonte da verdade: API
     try:
         info = get_character_info(char_name)
         current_level = int(info["level"])
@@ -213,7 +219,6 @@ def register():
         flash("Não foi possível encontrar esse personagem na API. Verifique o nome e tente novamente.")
         return redirect(url_for("index"))
 
-    # xp_start default: xp mínimo do nível atual
     try:
         xp_min = int(xp_for_level(current_level))
     except Exception:
@@ -230,13 +235,11 @@ def register():
         flash(f"XP inicial não pode ser menor que {xp_min} (mínimo do nível {current_level}).")
         return redirect(url_for("index"))
 
-    # meta diária
     try:
         daily_goal = int(daily_goal_raw) if daily_goal_raw else 1_000_000
     except Exception:
         daily_goal = 1_000_000
 
-    # nível meta
     try:
         goal_level = int(goal_level_raw) if goal_level_raw else (current_level + 10)
     except Exception:
@@ -259,12 +262,18 @@ def register():
         xp_start=xp_start,
         goal_level=goal_level,
         xp_goal=xp_goal,
-        daily_goal=daily_goal
+        daily_goal=daily_goal,
     )
-    user.characters.append(ch)
 
+    user.characters.append(ch)
     db.session.add(user)
     db.session.commit()
+
+    try:
+        user.active_character_id = ch.id
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
     login_user(user)
     return redirect(url_for("index"))
@@ -272,11 +281,11 @@ def register():
 
 @app.route("/login", methods=["POST"])
 def login():
-    username_or_email = request.form.get("username", "").strip()
-    password = request.form.get("password", "")
+    username_or_email = (request.form.get("username", "") or "").strip().lower()
+    password = request.form.get("password", "") or ""
 
     user = User.query.filter(
-        (User.username == username_or_email) | (User.email == username_or_email.lower())
+        (User.username == username_or_email) | (User.email == username_or_email)
     ).first()
 
     if not user or not user.check_password(password):
@@ -293,13 +302,158 @@ def logout():
     logout_user()
     return redirect(url_for("index"))
 
-# =========================
-# Rotas do app (protegidas)
-# =========================
+
+@app.route("/characters/select", methods=["POST"])
+@login_required
+def characters_select():
+    char_id_raw = request.form.get("character_id") or (request.json or {}).get("character_id")
+    try:
+        char_id = int(char_id_raw)
+    except Exception:
+        flash("Personagem inválido.")
+        return redirect(url_for("xp_tracker"))
+
+    ch = Character.query.filter_by(user_id=current_user.id, id=char_id).first()
+    if not ch:
+        flash("Personagem não encontrado.")
+        return redirect(url_for("xp_tracker"))
+
+    current_user.active_character_id = ch.id
+    db.session.commit()
+    flash("Personagem selecionado.")
+    return redirect(url_for("xp_tracker"))
+
+
+@app.route("/characters/add", methods=["POST"])
+@login_required
+def add_character():
+    existing_count = Character.query.filter_by(user_id=current_user.id).count()
+    if (not current_user.is_vip()) and existing_count >= 1:
+        flash("Recurso disponível apenas para VIP (múltiplos personagens).")
+        return redirect(url_for("xp_tracker"))
+
+    char_name = (request.form.get("char_name", "") or "").strip()
+    xp_start_raw = (request.form.get("xp_start", "") or "").strip()
+    goal_level_raw = (request.form.get("goal_level", "") or "").strip()
+    daily_goal_raw = (request.form.get("daily_goal", "") or "").strip()
+
+    if not char_name:
+        flash("Informe o nome do personagem.")
+        return redirect(url_for("xp_tracker"))
+
+    dup = Character.query.filter_by(user_id=current_user.id, char_name=char_name).first()
+    if dup:
+        current_user.active_character_id = dup.id
+        db.session.commit()
+        flash("Esse personagem já existe na sua conta. Selecionado como ativo.")
+        return redirect(url_for("xp_tracker"))
+
+    try:
+        info = get_character_info(char_name)
+        current_level = int(info["level"])
+    except Exception:
+        flash("Não foi possível validar esse personagem na API agora. Verifique o nome e tente novamente.")
+        return redirect(url_for("xp_tracker"))
+
+    try:
+        xp_min = int(xp_for_level(current_level))
+    except Exception:
+        flash("Tabela de XP não possui o nível atual do personagem.")
+        return redirect(url_for("xp_tracker"))
+
+    try:
+        xp_start = int(xp_start_raw) if xp_start_raw else xp_min
+    except Exception:
+        flash("XP inicial inválido.")
+        return redirect(url_for("xp_tracker"))
+
+    if xp_start < xp_min:
+        flash(f"XP inicial não pode ser menor que {xp_min} (mínimo do nível {current_level}).")
+        return redirect(url_for("xp_tracker"))
+
+    try:
+        daily_goal = int(daily_goal_raw) if daily_goal_raw else 1_000_000
+    except Exception:
+        daily_goal = 1_000_000
+
+    try:
+        goal_level = int(goal_level_raw) if goal_level_raw else (current_level + 10)
+    except Exception:
+        goal_level = current_level + 10
+
+    if goal_level <= current_level:
+        goal_level = current_level + 1
+
+    try:
+        xp_goal = int(xp_for_level(goal_level))
+    except Exception:
+        flash("Nível meta inválido (não existe na tabela).")
+        return redirect(url_for("xp_tracker"))
+
+    ch = Character(
+        user_id=current_user.id,
+        char_name=char_name,
+        xp_start=xp_start,
+        goal_level=goal_level,
+        xp_goal=xp_goal,
+        daily_goal=daily_goal,
+    )
+
+    db.session.add(ch)
+    db.session.commit()
+
+    current_user.active_character_id = ch.id
+    db.session.commit()
+
+    flash("Personagem adicionado e selecionado.")
+    return redirect(url_for("xp_tracker"))
+
+
+@app.route("/characters/delete", methods=["POST"])
+@login_required
+def characters_delete():
+    char_id_raw = request.form.get("character_id") or (request.json or {}).get("character_id")
+    try:
+        char_id = int(char_id_raw)
+    except Exception:
+        flash("Personagem inválido.")
+        return redirect(url_for("xp_tracker"))
+
+    ch = Character.query.filter_by(user_id=current_user.id, id=char_id).first()
+    if not ch:
+        flash("Personagem não encontrado.")
+        return redirect(url_for("xp_tracker"))
+
+    total = Character.query.filter_by(user_id=current_user.id).count()
+    if total <= 1:
+        flash("Você não pode excluir o último personagem.")
+        return redirect(url_for("xp_tracker"))
+
+    if current_user.active_character_id == ch.id:
+        other = Character.query.filter(
+            Character.user_id == current_user.id,
+            Character.id != ch.id
+        ).first()
+        current_user.active_character_id = other.id if other else None
+
+    db.session.delete(ch)
+    db.session.commit()
+
+    flash("Personagem excluído.")
+    return redirect(url_for("xp_tracker"))
+
+
 @app.route("/xp-tracker")
 @login_required
 def xp_tracker():
+    get_current_character()
     return render_template("index.html")
+
+
+@app.route("/more-metrics")
+@login_required
+def more_metrics():
+    return render_template("more_metrics.html")
 
 
 @app.route("/metrics")
@@ -394,24 +548,22 @@ def config():
             "xp_goal": ch.xp_goal,
             "daily_goal": ch.daily_goal,
             "goal_level": ch.goal_level,
-            "can_edit_xp_start": not has_history  # ✅ nova flag
+            "can_edit_xp_start": not has_history
         })
 
     data = request.json or {}
-
     old_name = ch.char_name
     new_name = (data.get("char_name") or ch.char_name or "").strip()
+
     if not new_name:
         return jsonify({"error": "Nome do personagem é obrigatório."}), 400
 
-    # valida na API (com retry+cache); se falhar sem cache, barra
     try:
         info = get_character_info(new_name)
         current_level = int(info["level"])
     except Exception:
         return jsonify({"error": "Não foi possível validar esse personagem na API agora. Tente novamente."}), 400
 
-    # xp_start só pode mudar se NÃO houver histórico de XP
     has_history = XpLog.query.filter_by(character_id=ch.id).first() is not None
 
     try:
@@ -425,7 +577,6 @@ def config():
                      "Zere o histórico ou selecione outro personagem."
         }), 400
 
-    # mínimo do nível atual
     try:
         xp_min = int(xp_for_level(current_level))
     except Exception:
@@ -433,9 +584,7 @@ def config():
 
     new_xp_start = requested_xp_start
     if new_xp_start < xp_min:
-        return jsonify({
-            "error": f"XP inicial não pode ser menor que {xp_min} (mínimo do nível {current_level})."
-        }), 400
+        return jsonify({"error": f"XP inicial não pode ser menor que {xp_min} (mínimo do nível {current_level})."}), 400
 
     try:
         new_daily_goal = int(data.get("daily_goal", ch.daily_goal))
@@ -459,14 +608,12 @@ def config():
     except Exception:
         return jsonify({"error": "Nível meta inválido (não existe na tabela)."}), 400
 
-    # aplica
     ch.char_name = new_name
     ch.xp_start = new_xp_start
     ch.daily_goal = new_daily_goal
     ch.goal_level = desired_goal_level
     ch.xp_goal = new_xp_goal
 
-    # se mudou o personagem, zera histórico
     if (old_name or "").strip().lower() != (new_name or "").strip().lower():
         XpLog.query.filter_by(character_id=ch.id).delete()
 
