@@ -140,7 +140,6 @@ class ChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(40), nullable=False, index=True)
 
-    # preparado para: global e por mundo (futuro)
     channel_type = db.Column(db.String(12), nullable=False, default="global", index=True)  # global | world
     world = db.Column(db.String(60), nullable=True, index=True)
 
@@ -212,9 +211,21 @@ def get_current_character() -> Character:
     return ch
 
 
+def serialize_chat(rows):
+    return [
+        {
+            "id": r.id,
+            "username": r.username,
+            "text": r.text,
+            "created_at": r.created_at.isoformat() + "Z",
+        }
+        for r in rows
+    ]
+
+
 with app.app_context():
     ensure_data_dir()
-    db.create_all()  # cria tabelas em app.db e chat.db
+    db.create_all()
 
 
 # =========================
@@ -491,7 +502,7 @@ def characters_delete():
 
 
 # =========================
-# Rotas do XP tracker
+# XP tracker
 # =========================
 @app.route("/xp-tracker")
 @login_required
@@ -672,7 +683,7 @@ def config():
 
 
 # =========================
-# Chat (página + API global + long polling)
+# Chat
 # =========================
 @app.route("/chat")
 @login_required
@@ -697,16 +708,7 @@ def chat_messages_list():
         .all()
     )
     rows.reverse()
-
-    return jsonify([
-        {
-            "id": r.id,
-            "username": r.username,
-            "text": r.text,
-            "created_at": r.created_at.isoformat() + "Z",
-        }
-        for r in rows
-    ])
+    return jsonify(serialize_chat(rows))
 
 
 @app.route("/chat/api/messages", methods=["POST"])
@@ -744,18 +746,17 @@ def chat_messages_send():
 @login_required
 def chat_poll():
     """
-    Long polling:
-      - client manda ?since_id=123
-      - server espera até ~25s por novas mensagens no canal global
-      - retorna [] se não chegou nada no tempo
+    Long polling MAIS responsivo:
+      - step pequeno (200ms)
+      - timeout menor (12s) para evitar segurar conexões por muito tempo em proxy
     """
     try:
         since_id = int(request.args.get("since_id", "0"))
     except Exception:
         since_id = 0
 
-    timeout = 25.0
-    step = 0.8
+    timeout = 12.0
+    step = 0.2  # ↓ reduz latência de entrega percebida
     started = time.time()
 
     while True:
@@ -771,15 +772,7 @@ def chat_poll():
         )
 
         if rows:
-            return jsonify([
-                {
-                    "id": r.id,
-                    "username": r.username,
-                    "text": r.text,
-                    "created_at": r.created_at.isoformat() + "Z",
-                }
-                for r in rows
-            ])
+            return jsonify(serialize_chat(rows))
 
         if (time.time() - started) >= timeout:
             return jsonify([])
