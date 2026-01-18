@@ -8,6 +8,11 @@
 </head>
 
 <style>
+  /* Centralização do botão do meio no header (tracker-left / tracker-center / tracker-right) */
+  .tracker-left { flex: 1; }
+  .tracker-center { flex: 1; display: flex; justify-content: center; align-items: center; }
+  .tracker-right { flex: 1; justify-content: flex-end; } /* mantém o display:flex do style.css */ /* [file:4] */
+
   .char-line{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 
   .vip-badge {
@@ -86,6 +91,7 @@
 </style>
 
 <body>
+    <!-- LOADING OVERLAY -->
     <div id="loadingOverlay" class="loading-overlay" aria-busy="false">
         <div class="loading-box">
             <div class="spinner"></div>
@@ -93,8 +99,10 @@
         </div>
     </div>
 
+    <!-- TOAST -->
     <div id="toast" class="toast"></div>
 
+    <!-- HEADER -->
     <header class="header">
         <div class="tracker-header">
             <div class="tracker-left">
@@ -142,6 +150,13 @@
 
             </div>
 
+            <!-- BOTÃO CENTRAL (área verde do print) -->
+            <div class="tracker-center">
+                <button class="btn-settings" onclick="window.location.href='{{ url_for('chat') }}'">
+                    Chat
+                </button>
+            </div>
+
             <div class="tracker-right">
                 <button class="btn-metrics" onclick="window.location.href='/more-metrics'">
                     Mais métricas
@@ -158,6 +173,7 @@
         </div>
     </header>
 
+    <!-- FLASH (mensagens do backend) -->
     <div class="flash-wrap">
       {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -167,6 +183,7 @@
     </div>
 
     <main class="container">
+        <!-- STATS -->
         <section class="stats-grid">
             <div class="card highlight">
                 <span>XP Atual</span>
@@ -186,8 +203,10 @@
             </div>
         </section>
 
+        <!-- META DIÁRIA -->
         <section class="daily-goal">
             <h3 id="dailyTitle">Meta diária</h3>
+
             <div id="goalWarning" class="extra-metrics" style="display:none;">
                 <h3>Atenção</h3>
                 <p>
@@ -195,6 +214,7 @@
                     Considere ajustar sua meta nas configurações.
                 </p>
             </div>
+
             <div id="goalReached" class="extra-metrics" style="display:none;">
                 <h3>Meta alcançada 🎉</h3>
                 <p>
@@ -212,6 +232,7 @@
             <p id="dailyRemaining" class="daily-remaining"></p>
         </section>
 
+        <!-- ENTRADA DE XP -->
         <section class="entry">
             <h3>Registrar XP do dia</h3>
             <div class="entry-box">
@@ -225,6 +246,7 @@
             </label>
         </section>
 
+        <!-- GRÁFICO -->
         <section class="chart-section">
             <h3>Histórico de XP diária</h3>
             <canvas id="chart" height="120"></canvas>
@@ -236,10 +258,12 @@
         </section>
     </main>
 
+    <!-- FOOTER -->
     <footer class="footer">
         <p>Yonexus • Fã site não oficial de Tibia.</p>
     </footer>
 
+    <!-- MODAL CONFIGURAÇÕES -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <h2>Configurações</h2>
@@ -270,6 +294,7 @@
     </div>
 
     {% if current_user.is_vip() %}
+    <!-- MODAL ADICIONAR PERSONAGEM (VIP) -->
     <div id="addCharModal" class="modal">
         <div class="modal-content">
             <h2>Adicionar personagem</h2>

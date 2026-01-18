@@ -14,16 +14,27 @@ from urllib3.util import Retry
 import os
 import json
 import requests
-from datetime import date
+import time
+from datetime import date, datetime
 
 app = Flask(__name__)
 
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
+# Banco principal (app)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
     "DATABASE_URL",
     "sqlite:///" + os.path.join(app.root_path, "data", "app.db"),
 )
+
+# Banco separado do chat (bind)
+app.config["SQLALCHEMY_BINDS"] = {
+    "chat": os.environ.get(
+        "CHAT_DATABASE_URL",
+        "sqlite:///" + os.path.join(app.root_path, "data", "chat.db"),
+    )
+}
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -37,6 +48,9 @@ login_manager.login_message_category = "error"
 XP_TABLE_FILE = os.path.join(app.root_path, "data", "experience_table_tibia.json")
 
 
+# =========================
+# Anti-cache
+# =========================
 @app.after_request
 def add_no_cache_headers(response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -45,6 +59,9 @@ def add_no_cache_headers(response):
     return response
 
 
+# =========================
+# Requests Session com retry
+# =========================
 _retry = Retry(
     total=3,
     backoff_factor=0.6,
@@ -59,6 +76,9 @@ _http.mount("http://", HTTPAdapter(max_retries=_retry))
 CHAR_INFO_CACHE = {}  # name -> dict {vocation, level, world}
 
 
+# =========================
+# Models (banco principal)
+# =========================
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
 
@@ -88,7 +108,6 @@ class User(db.Model, UserMixin):
 
 class Character(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
 
     char_name = db.Column(db.String(80), nullable=False)
@@ -107,10 +126,26 @@ class Character(db.Model):
 
 class XpLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-
     character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False, index=True)
     date = db.Column(db.String(10), nullable=False)  # YYYY-MM-DD
     xp = db.Column(db.Integer, nullable=False, default=0)
+
+
+# =========================
+# Model do chat (banco separado)
+# =========================
+class ChatMessage(db.Model):
+    __bind_key__ = "chat"
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(40), nullable=False, index=True)
+
+    # preparado para: global e por mundo (futuro)
+    channel_type = db.Column(db.String(12), nullable=False, default="global", index=True)  # global | world
+    world = db.Column(db.String(60), nullable=True, index=True)
+
+    text = db.Column(db.String(500), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
 
 
 @login_manager.user_loader
@@ -121,6 +156,9 @@ def load_user(user_id):
         return None
 
 
+# =========================
+# Helpers
+# =========================
 def ensure_data_dir():
     os.makedirs(os.path.join(app.root_path, "data"), exist_ok=True)
 
@@ -176,9 +214,12 @@ def get_current_character() -> Character:
 
 with app.app_context():
     ensure_data_dir()
-    db.create_all()
+    db.create_all()  # cria tabelas em app.db e chat.db
 
 
+# =========================
+# Rotas públicas
+# =========================
 @app.route("/")
 def index():
     return render_template("home.html")
@@ -189,6 +230,9 @@ def xp_table_public():
     return jsonify(load_xp_table())
 
 
+# =========================
+# Auth
+# =========================
 @app.route("/register", methods=["POST"])
 def register():
     username = (request.form.get("username", "") or "").strip().lower()
@@ -303,6 +347,9 @@ def logout():
     return redirect(url_for("index"))
 
 
+# =========================
+# Multi-personagem
+# =========================
 @app.route("/characters/select", methods=["POST"])
 @login_required
 def characters_select():
@@ -443,6 +490,9 @@ def characters_delete():
     return redirect(url_for("xp_tracker"))
 
 
+# =========================
+# Rotas do XP tracker
+# =========================
 @app.route("/xp-tracker")
 @login_required
 def xp_tracker():
@@ -619,6 +669,122 @@ def config():
 
     db.session.commit()
     return jsonify({"status": "saved"})
+
+
+# =========================
+# Chat (página + API global + long polling)
+# =========================
+@app.route("/chat")
+@login_required
+def chat():
+    return render_template("chat.html")
+
+
+@app.route("/chat/api/messages", methods=["GET"])
+@login_required
+def chat_messages_list():
+    limit = request.args.get("limit", "80")
+    try:
+        limit = max(1, min(200, int(limit)))
+    except Exception:
+        limit = 80
+
+    rows = (
+        ChatMessage.query
+        .filter(ChatMessage.channel_type == "global")
+        .order_by(ChatMessage.id.desc())
+        .limit(limit)
+        .all()
+    )
+    rows.reverse()
+
+    return jsonify([
+        {
+            "id": r.id,
+            "username": r.username,
+            "text": r.text,
+            "created_at": r.created_at.isoformat() + "Z",
+        }
+        for r in rows
+    ])
+
+
+@app.route("/chat/api/messages", methods=["POST"])
+@login_required
+def chat_messages_send():
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+
+    if not text:
+        return jsonify({"error": "Mensagem vazia."}), 400
+    if len(text) > 500:
+        return jsonify({"error": "Mensagem muito longa (máx 500)."}), 400
+
+    msg = ChatMessage(
+        username=current_user.username,
+        channel_type="global",
+        world=None,
+        text=text
+    )
+    db.session.add(msg)
+    db.session.commit()
+
+    return jsonify({
+        "status": "ok",
+        "message": {
+            "id": msg.id,
+            "username": msg.username,
+            "text": msg.text,
+            "created_at": msg.created_at.isoformat() + "Z",
+        }
+    })
+
+
+@app.route("/chat/api/poll", methods=["GET"])
+@login_required
+def chat_poll():
+    """
+    Long polling:
+      - client manda ?since_id=123
+      - server espera até ~25s por novas mensagens no canal global
+      - retorna [] se não chegou nada no tempo
+    """
+    try:
+        since_id = int(request.args.get("since_id", "0"))
+    except Exception:
+        since_id = 0
+
+    timeout = 25.0
+    step = 0.8
+    started = time.time()
+
+    while True:
+        rows = (
+            ChatMessage.query
+            .filter(
+                ChatMessage.channel_type == "global",
+                ChatMessage.id > since_id
+            )
+            .order_by(ChatMessage.id.asc())
+            .limit(120)
+            .all()
+        )
+
+        if rows:
+            return jsonify([
+                {
+                    "id": r.id,
+                    "username": r.username,
+                    "text": r.text,
+                    "created_at": r.created_at.isoformat() + "Z",
+                }
+                for r in rows
+            ])
+
+        if (time.time() - started) >= timeout:
+            return jsonify([])
+
+        time.sleep(step)
 
 
 @app.route("/bestiary")

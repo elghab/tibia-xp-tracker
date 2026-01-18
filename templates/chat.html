@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Yonexus - Chat</title>
+
+  <!-- opcional: reaproveita variáveis/estilo global -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" /> <!-- [file:1] -->
+
+  <!-- chat "projeto separado" -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}" /> <!-- [file:1] -->
+</head>
+<body>
+
+  <header class="header">
+    <div class="tracker-header" style="margin-top:0;">
+      <div class="tracker-left">
+        <h2>Chat</h2>
+        <div class="tracker-info">Em desenvolvimento</div>
+      </div>
+
+      <div class="tracker-right">
+        <button class="btn-settings" onclick="window.location.href='/xp-tracker'">Voltar</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container chat-page">
+    <section class="chat-card">
+      <div id="chatMessages" class="chat-messages"></div>
+
+      <div class="chat-input">
+        <input id="chatText" type="text" placeholder="Digite uma mensagem..." autocomplete="off" />
+        <button id="chatSend">Enviar</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // se quiser personalizar por usuário
+    window.CHAT_USERNAME = "{{ current_user.username }}";
+  </script>
+
+  <script src="{{ url_for('static', filename='js/chat.js') }}"></script> <!-- [file:1] -->
+</body>
+</html>
