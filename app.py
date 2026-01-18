@@ -11,10 +11,10 @@ from flask_login import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
+from flask_socketio import SocketIO, emit
 import os
 import json
 import requests
-import time
 from datetime import date, datetime
 
 app = Flask(__name__)
@@ -38,6 +38,9 @@ app.config["SQLALCHEMY_BINDS"] = {
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
+
+# SocketIO (cors_allowed_origins="*" para simplificar; pode restringir depois)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 login_manager = LoginManager()
 login_manager.login_view = "index"
@@ -140,7 +143,7 @@ class ChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(40), nullable=False, index=True)
 
-    channel_type = db.Column(db.String(12), nullable=False, default="global", index=True)  # global | world
+    channel_type = db.Column(db.String(12), nullable=False, default="global", index=True)
     world = db.Column(db.String(60), nullable=True, index=True)
 
     text = db.Column(db.String(500), nullable=False)
@@ -211,16 +214,13 @@ def get_current_character() -> Character:
     return ch
 
 
-def serialize_chat(rows):
-    return [
-        {
-            "id": r.id,
-            "username": r.username,
-            "text": r.text,
-            "created_at": r.created_at.isoformat() + "Z",
-        }
-        for r in rows
-    ]
+def serialize_chat_row(r: ChatMessage):
+    return {
+        "id": r.id,
+        "username": r.username,
+        "text": r.text,
+        "created_at": r.created_at.isoformat() + "Z",
+    }
 
 
 with app.app_context():
@@ -683,7 +683,7 @@ def config():
 
 
 # =========================
-# Chat
+# Chat (página + histórico REST)
 # =========================
 @app.route("/chat")
 @login_required
@@ -708,19 +708,34 @@ def chat_messages_list():
         .all()
     )
     rows.reverse()
-    return jsonify(serialize_chat(rows))
+    return jsonify([serialize_chat_row(r) for r in rows])
 
 
-@app.route("/chat/api/messages", methods=["POST"])
-@login_required
-def chat_messages_send():
-    data = request.get_json(silent=True) or {}
-    text = (data.get("text") or "").strip()
+# =========================
+# Socket.IO events
+# =========================
+@socketio.on("connect")
+def socket_connect():
+    if not current_user.is_authenticated:
+        return False  # recusa conexão sem login
+    emit("status", {"ok": True})
+
+
+@socketio.on("chat_send")
+def socket_chat_send(data):
+    if not current_user.is_authenticated:
+        return
+
+    text = (data or {}).get("text", "")
+    text = (text or "").strip()
 
     if not text:
-        return jsonify({"error": "Mensagem vazia."}), 400
+        emit("chat_error", {"error": "Mensagem vazia."})
+        return
+
     if len(text) > 500:
-        return jsonify({"error": "Mensagem muito longa (máx 500)."}), 400
+        emit("chat_error", {"error": "Mensagem muito longa (máx 500)."})
+        return
 
     msg = ChatMessage(
         username=current_user.username,
@@ -731,53 +746,10 @@ def chat_messages_send():
     db.session.add(msg)
     db.session.commit()
 
-    return jsonify({
-        "status": "ok",
-        "message": {
-            "id": msg.id,
-            "username": msg.username,
-            "text": msg.text,
-            "created_at": msg.created_at.isoformat() + "Z",
-        }
-    })
+    payload = serialize_chat_row(msg)
 
-
-@app.route("/chat/api/poll", methods=["GET"])
-@login_required
-def chat_poll():
-    """
-    Long polling MAIS responsivo:
-      - step pequeno (200ms)
-      - timeout menor (12s) para evitar segurar conexões por muito tempo em proxy
-    """
-    try:
-        since_id = int(request.args.get("since_id", "0"))
-    except Exception:
-        since_id = 0
-
-    timeout = 12.0
-    step = 0.2  # ↓ reduz latência de entrega percebida
-    started = time.time()
-
-    while True:
-        rows = (
-            ChatMessage.query
-            .filter(
-                ChatMessage.channel_type == "global",
-                ChatMessage.id > since_id
-            )
-            .order_by(ChatMessage.id.asc())
-            .limit(120)
-            .all()
-        )
-
-        if rows:
-            return jsonify(serialize_chat(rows))
-
-        if (time.time() - started) >= timeout:
-            return jsonify([])
-
-        time.sleep(step)
+    # broadcast para todos conectados
+    emit("chat_message", payload, broadcast=True)  # broadcast=True é o padrão pro "todos". [web:232]
 
 
 @app.route("/bestiary")
@@ -787,4 +759,5 @@ def bestiary():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Em produção, não use app.run(); use gunicorn+eventlet (abaixo).
+    socketio.run(app, debug=True)

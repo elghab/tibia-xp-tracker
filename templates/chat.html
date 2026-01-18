@@ -41,7 +41,8 @@
     // se quiser personalizar por usuário
     window.CHAT_USERNAME = "{{ current_user.username }}";
   </script>
-
+  
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="{{ url_for('static', filename='js/chat.js') }}"></script> <!-- [file:1] -->
 </body>
 </html>
