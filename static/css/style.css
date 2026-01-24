@@ -451,3 +451,16 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* FIX: evita loop de resize do Chart.js no tracker */
+.chart-section {
+  position: relative;
+  height: 320px; /* pode ajustar: 260~380 */
+}
+
+#chart {
+  width: 100% !important;
+  height: 240px !important;   /* controla o tamanho real do canvas */
+  max-height: 240px !important;
+  display: block;
+}

@@ -17,15 +17,19 @@ import json
 import requests
 from datetime import date, datetime
 
+
 app = Flask(__name__)
 
+
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+
 
 # Banco principal (app)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
     "DATABASE_URL",
     "sqlite:///" + os.path.join(app.root_path, "data", "app.db"),
 )
+
 
 # Banco separado do chat (bind)
 app.config["SQLALCHEMY_BINDS"] = {
@@ -35,12 +39,16 @@ app.config["SQLALCHEMY_BINDS"] = {
     )
 }
 
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
 
 db = SQLAlchemy(app)
 
+
 # SocketIO (cors_allowed_origins="*" para simplificar; pode restringir depois)
 socketio = SocketIO(app, cors_allowed_origins="*")
+
 
 login_manager = LoginManager()
 login_manager.login_view = "index"
@@ -48,7 +56,9 @@ login_manager.init_app(app)
 login_manager.login_message = "Faça login para acessar esta página."
 login_manager.login_message_category = "error"
 
+
 XP_TABLE_FILE = os.path.join(app.root_path, "data", "experience_table_tibia.json")
+
 
 
 # =========================
@@ -62,6 +72,7 @@ def add_no_cache_headers(response):
     return response
 
 
+
 # =========================
 # Requests Session com retry
 # =========================
@@ -72,11 +83,14 @@ _retry = Retry(
     allowed_methods=["GET"],
 )
 
+
 _http = requests.Session()
 _http.mount("https://", HTTPAdapter(max_retries=_retry))
 _http.mount("http://", HTTPAdapter(max_retries=_retry))
 
+
 CHAR_INFO_CACHE = {}  # name -> dict {vocation, level, world}
+
 
 
 # =========================
@@ -85,12 +99,15 @@ CHAR_INFO_CACHE = {}  # name -> dict {vocation, level, world}
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
 
+
     username = db.Column(db.String(40), unique=True, nullable=False, index=True)
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
 
+
     vip_until = db.Column(db.Date, nullable=True)  # NULL = free
     active_character_id = db.Column(db.Integer, nullable=True)
+
 
     characters = db.relationship(
         "Character",
@@ -99,25 +116,31 @@ class User(db.Model, UserMixin):
         cascade="all, delete-orphan",
     )
 
+
     def set_password(self, password_plain: str):
         self.password_hash = generate_password_hash(password_plain)
+
 
     def check_password(self, password_plain: str) -> bool:
         return check_password_hash(self.password_hash, password_plain)
 
+
     def is_vip(self) -> bool:
         return self.vip_until is not None and self.vip_until >= date.today()
+
 
 
 class Character(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
 
+
     char_name = db.Column(db.String(80), nullable=False)
     xp_start = db.Column(db.Integer, nullable=False, default=0)
     xp_goal = db.Column(db.Integer, nullable=False, default=0)
     daily_goal = db.Column(db.Integer, nullable=False, default=0)
     goal_level = db.Column(db.Integer, nullable=True)
+
 
     logs = db.relationship(
         "XpLog",
@@ -127,11 +150,13 @@ class Character(db.Model):
     )
 
 
+
 class XpLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False, index=True)
     date = db.Column(db.String(10), nullable=False)  # YYYY-MM-DD
     xp = db.Column(db.Integer, nullable=False, default=0)
+
 
 
 # =========================
@@ -140,14 +165,18 @@ class XpLog(db.Model):
 class ChatMessage(db.Model):
     __bind_key__ = "chat"
 
+
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(40), nullable=False, index=True)
+
 
     channel_type = db.Column(db.String(12), nullable=False, default="global", index=True)
     world = db.Column(db.String(60), nullable=True, index=True)
 
+
     text = db.Column(db.String(500), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+
 
 
 @login_manager.user_loader
@@ -158,11 +187,13 @@ def load_user(user_id):
         return None
 
 
+
 # =========================
 # Helpers
 # =========================
 def ensure_data_dir():
     os.makedirs(os.path.join(app.root_path, "data"), exist_ok=True)
+
 
 
 def load_xp_table():
@@ -171,11 +202,13 @@ def load_xp_table():
     return data["experience_table"]
 
 
+
 def xp_for_level(level: int) -> int:
     for row in load_xp_table():
         if int(row["level"]) == int(level):
             return int(row["experience"])
     raise ValueError("Level não encontrado na tabela")
+
 
 
 def get_character_info(name):
@@ -197,12 +230,14 @@ def get_character_info(name):
         raise
 
 
+
 def get_current_character() -> Character:
     active_id = getattr(current_user, "active_character_id", None)
     if active_id:
         ch = Character.query.filter_by(user_id=current_user.id, id=active_id).first()
         if ch:
             return ch
+
 
     ch = Character.query.filter_by(user_id=current_user.id).first()
     if ch:
@@ -214,6 +249,7 @@ def get_current_character() -> Character:
     return ch
 
 
+
 def serialize_chat_row(r: ChatMessage):
     return {
         "id": r.id,
@@ -223,9 +259,11 @@ def serialize_chat_row(r: ChatMessage):
     }
 
 
+
 with app.app_context():
     ensure_data_dir()
     db.create_all()
+
 
 
 # =========================
@@ -236,9 +274,11 @@ def index():
     return render_template("home.html")
 
 
+
 @app.route("/xp-table")
 def xp_table_public():
     return jsonify(load_xp_table())
+
 
 
 # =========================
@@ -250,22 +290,27 @@ def register():
     email = (request.form.get("email", "") or "").strip().lower()
     password = request.form.get("password", "") or ""
 
+
     char_name = (request.form.get("char_name", "") or "").strip()
     xp_start_raw = (request.form.get("xp_start", "") or "").strip()
     goal_level_raw = (request.form.get("goal_level", "") or "").strip()
     daily_goal_raw = (request.form.get("daily_goal", "") or "").strip()
 
+
     if not username or not email or not password:
         flash("Preencha usuário, email e senha.")
         return redirect(url_for("index"))
+
 
     if not char_name:
         flash("Informe o nome do personagem.")
         return redirect(url_for("index"))
 
+
     if User.query.filter((User.username == username) | (User.email == email)).first():
         flash("Usuário ou email já cadastrado.")
         return redirect(url_for("index"))
+
 
     try:
         info = get_character_info(char_name)
@@ -274,11 +319,13 @@ def register():
         flash("Não foi possível encontrar esse personagem na API. Verifique o nome e tente novamente.")
         return redirect(url_for("index"))
 
+
     try:
         xp_min = int(xp_for_level(current_level))
     except Exception:
         flash("Tabela de XP não possui o nível atual do personagem.")
         return redirect(url_for("index"))
+
 
     try:
         xp_start = int(xp_start_raw) if xp_start_raw else xp_min
@@ -286,22 +333,27 @@ def register():
         flash("XP inicial inválido.")
         return redirect(url_for("index"))
 
+
     if xp_start < xp_min:
         flash(f"XP inicial não pode ser menor que {xp_min} (mínimo do nível {current_level}).")
         return redirect(url_for("index"))
+
 
     try:
         daily_goal = int(daily_goal_raw) if daily_goal_raw else 1_000_000
     except Exception:
         daily_goal = 1_000_000
 
+
     try:
         goal_level = int(goal_level_raw) if goal_level_raw else (current_level + 10)
     except Exception:
         goal_level = current_level + 10
 
+
     if goal_level <= current_level:
         goal_level = current_level + 1
+
 
     try:
         xp_goal = int(xp_for_level(goal_level))
@@ -309,8 +361,10 @@ def register():
         flash("Nível meta inválido (não existe na tabela).")
         return redirect(url_for("index"))
 
+
     user = User(username=username, email=email)
     user.set_password(password)
+
 
     ch = Character(
         char_name=char_name,
@@ -320,9 +374,11 @@ def register():
         daily_goal=daily_goal,
     )
 
+
     user.characters.append(ch)
     db.session.add(user)
     db.session.commit()
+
 
     try:
         user.active_character_id = ch.id
@@ -330,8 +386,10 @@ def register():
     except Exception:
         db.session.rollback()
 
+
     login_user(user)
     return redirect(url_for("index"))
+
 
 
 @app.route("/login", methods=["POST"])
@@ -339,16 +397,20 @@ def login():
     username_or_email = (request.form.get("username", "") or "").strip().lower()
     password = request.form.get("password", "") or ""
 
+
     user = User.query.filter(
         (User.username == username_or_email) | (User.email == username_or_email)
     ).first()
+
 
     if not user or not user.check_password(password):
         flash("Login inválido.")
         return redirect(url_for("index"))
 
+
     login_user(user)
     return redirect(url_for("index"))
+
 
 
 @app.route("/logout", methods=["POST"])
@@ -356,6 +418,7 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for("index"))
+
 
 
 # =========================
@@ -371,15 +434,18 @@ def characters_select():
         flash("Personagem inválido.")
         return redirect(url_for("xp_tracker"))
 
+
     ch = Character.query.filter_by(user_id=current_user.id, id=char_id).first()
     if not ch:
         flash("Personagem não encontrado.")
         return redirect(url_for("xp_tracker"))
 
+
     current_user.active_character_id = ch.id
     db.session.commit()
     flash("Personagem selecionado.")
     return redirect(url_for("xp_tracker"))
+
 
 
 @app.route("/characters/add", methods=["POST"])
@@ -390,14 +456,17 @@ def add_character():
         flash("Recurso disponível apenas para VIP (múltiplos personagens).")
         return redirect(url_for("xp_tracker"))
 
+
     char_name = (request.form.get("char_name", "") or "").strip()
     xp_start_raw = (request.form.get("xp_start", "") or "").strip()
     goal_level_raw = (request.form.get("goal_level", "") or "").strip()
     daily_goal_raw = (request.form.get("daily_goal", "") or "").strip()
 
+
     if not char_name:
         flash("Informe o nome do personagem.")
         return redirect(url_for("xp_tracker"))
+
 
     dup = Character.query.filter_by(user_id=current_user.id, char_name=char_name).first()
     if dup:
@@ -406,6 +475,7 @@ def add_character():
         flash("Esse personagem já existe na sua conta. Selecionado como ativo.")
         return redirect(url_for("xp_tracker"))
 
+
     try:
         info = get_character_info(char_name)
         current_level = int(info["level"])
@@ -413,11 +483,13 @@ def add_character():
         flash("Não foi possível validar esse personagem na API agora. Verifique o nome e tente novamente.")
         return redirect(url_for("xp_tracker"))
 
+
     try:
         xp_min = int(xp_for_level(current_level))
     except Exception:
         flash("Tabela de XP não possui o nível atual do personagem.")
         return redirect(url_for("xp_tracker"))
+
 
     try:
         xp_start = int(xp_start_raw) if xp_start_raw else xp_min
@@ -425,28 +497,34 @@ def add_character():
         flash("XP inicial inválido.")
         return redirect(url_for("xp_tracker"))
 
+
     if xp_start < xp_min:
         flash(f"XP inicial não pode ser menor que {xp_min} (mínimo do nível {current_level}).")
         return redirect(url_for("xp_tracker"))
+
 
     try:
         daily_goal = int(daily_goal_raw) if daily_goal_raw else 1_000_000
     except Exception:
         daily_goal = 1_000_000
 
+
     try:
         goal_level = int(goal_level_raw) if goal_level_raw else (current_level + 10)
     except Exception:
         goal_level = current_level + 10
 
+
     if goal_level <= current_level:
         goal_level = current_level + 1
+
 
     try:
         xp_goal = int(xp_for_level(goal_level))
     except Exception:
         flash("Nível meta inválido (não existe na tabela).")
         return redirect(url_for("xp_tracker"))
+
 
     ch = Character(
         user_id=current_user.id,
@@ -457,14 +535,18 @@ def add_character():
         daily_goal=daily_goal,
     )
 
+
     db.session.add(ch)
     db.session.commit()
+
 
     current_user.active_character_id = ch.id
     db.session.commit()
 
+
     flash("Personagem adicionado e selecionado.")
     return redirect(url_for("xp_tracker"))
+
 
 
 @app.route("/characters/delete", methods=["POST"])
@@ -477,15 +559,18 @@ def characters_delete():
         flash("Personagem inválido.")
         return redirect(url_for("xp_tracker"))
 
+
     ch = Character.query.filter_by(user_id=current_user.id, id=char_id).first()
     if not ch:
         flash("Personagem não encontrado.")
         return redirect(url_for("xp_tracker"))
 
+
     total = Character.query.filter_by(user_id=current_user.id).count()
     if total <= 1:
         flash("Você não pode excluir o último personagem.")
         return redirect(url_for("xp_tracker"))
+
 
     if current_user.active_character_id == ch.id:
         other = Character.query.filter(
@@ -494,11 +579,14 @@ def characters_delete():
         ).first()
         current_user.active_character_id = other.id if other else None
 
+
     db.session.delete(ch)
     db.session.commit()
 
+
     flash("Personagem excluído.")
     return redirect(url_for("xp_tracker"))
+
 
 
 # =========================
@@ -511,10 +599,12 @@ def xp_tracker():
     return render_template("index.html")
 
 
+
 @app.route("/more-metrics")
 @login_required
 def more_metrics():
     return render_template("more_metrics.html")
+
 
 
 @app.route("/metrics")
@@ -524,13 +614,20 @@ def metrics():
     if not ch:
         return jsonify({"error": "Nenhum personagem cadastrado."}), 400
 
-    log_rows = XpLog.query.filter_by(character_id=ch.id).order_by(XpLog.date.asc()).all()
+    log_rows = (
+        XpLog.query
+        .filter_by(character_id=ch.id)
+        .order_by(XpLog.date.asc())
+        .all()
+    )
     log = [{"date": r.date, "xp": r.xp} for r in log_rows]
 
     try:
         info = get_character_info(ch.char_name)
     except Exception:
-        return jsonify({"error": "API do TibiaData indisponível no momento. Tente novamente em alguns segundos."}), 503
+        return jsonify({
+            "error": "API do TibiaData indisponível no momento. Tente novamente em alguns segundos."
+        }), 503
 
     xp_total = ch.xp_start + sum(d["xp"] for d in log)
     xp_remaining = max(0, ch.xp_goal - xp_total)
@@ -541,7 +638,10 @@ def metrics():
 
     today = date.today().isoformat()
     today_xp = next((d["xp"] for d in log if d["date"] == today), 0)
-    daily_progress = min(100, round((today_xp / ch.daily_goal) * 100, 1)) if ch.daily_goal > 0 else 0
+    daily_progress = (
+        min(100, round((today_xp / ch.daily_goal) * 100, 1))
+        if ch.daily_goal > 0 else 0
+    )
 
     return jsonify({
         "config": {
@@ -569,8 +669,10 @@ def add_xp():
     if not ch:
         return jsonify({"error": "Nenhum personagem cadastrado."}), 400
 
+
     xp = int(request.json["xp"])
     today = date.today().isoformat()
+
 
     row = XpLog.query.filter_by(character_id=ch.id, date=today).first()
     if row:
@@ -578,8 +680,10 @@ def add_xp():
     else:
         db.session.add(XpLog(character_id=ch.id, date=today, xp=xp))
 
+
     db.session.commit()
     return jsonify({"status": "ok"})
+
 
 
 @app.route("/reset-xp-history", methods=["POST"])
@@ -589,9 +693,11 @@ def reset_xp_history():
     if not ch:
         return jsonify({"error": "Nenhum personagem cadastrado."}), 400
 
+
     XpLog.query.filter_by(character_id=ch.id).delete()
     db.session.commit()
     return jsonify({"status": "ok"})
+
 
 
 @app.route("/config", methods=["GET", "POST"])
@@ -600,6 +706,7 @@ def config():
     ch = get_current_character()
     if not ch:
         return jsonify({"error": "Nenhum personagem cadastrado."}), 400
+
 
     if request.method == "GET":
         has_history = XpLog.query.filter_by(character_id=ch.id).first() is not None
@@ -612,12 +719,15 @@ def config():
             "can_edit_xp_start": not has_history
         })
 
+
     data = request.json or {}
     old_name = ch.char_name
     new_name = (data.get("char_name") or ch.char_name or "").strip()
 
+
     if not new_name:
         return jsonify({"error": "Nome do personagem é obrigatório."}), 400
+
 
     try:
         info = get_character_info(new_name)
@@ -625,90 +735,105 @@ def config():
     except Exception:
         return jsonify({"error": "Não foi possível validar esse personagem na API agora. Tente novamente."}), 400
 
+
     has_history = XpLog.query.filter_by(character_id=ch.id).first() is not None
 
-    try:
-        requested_xp_start = int(data.get("xp_start", ch.xp_start))
-    except Exception:
-        return jsonify({"error": "XP inicial inválida."}), 400
 
-    if has_history and requested_xp_start != ch.xp_start:
-        return jsonify({
-            "error": "XP inicial só pode ser alterado quando não houver histórico de XP. "
-                     "Zere o histórico ou selecione outro personagem."
-        }), 400
+    # =========================
+    # XP inicial: só valida/atualiza se vier no payload
+    # =========================
+    if "xp_start" in data and str(data.get("xp_start")).strip() != "":
+        try:
+            requested_xp_start = int(data.get("xp_start"))
+        except Exception:
+            return jsonify({"error": "XP inicial inválida."}), 400
 
-    try:
-        xp_min = int(xp_for_level(current_level))
-    except Exception:
-        return jsonify({"error": "Tabela de XP não possui o nível atual do personagem."}), 400
 
-    new_xp_start = requested_xp_start
-    if new_xp_start < xp_min:
-        return jsonify({"error": f"XP inicial não pode ser menor que {xp_min} (mínimo do nível {current_level})."}), 400
+        if has_history and requested_xp_start != ch.xp_start:
+            return jsonify({
+                "error": "XP inicial só pode ser alterado quando não houver histórico de XP. "
+                         "Zere o histórico ou selecione outro personagem."
+            }), 400
 
-    try:
-        new_daily_goal = int(data.get("daily_goal", ch.daily_goal))
-    except Exception:
+
+        try:
+            xp_min = int(xp_for_level(current_level))
+        except Exception:
+            return jsonify({"error": "Tabela de XP não possui o nível atual do personagem."}), 400
+
+
+        if requested_xp_start < xp_min:
+            return jsonify({"error": f"XP inicial não pode ser menor que {xp_min} (mínimo do nível {current_level})."}), 400
+
+
+        ch.xp_start = requested_xp_start
+    # Se não vier xp_start, não mexe nele e nem valida nada.
+
+
+    # daily_goal (pode vir ou não)
+    if "daily_goal" in data and str(data.get("daily_goal")).strip() != "":
+        try:
+            new_daily_goal = int(data.get("daily_goal"))
+        except Exception:
+            return jsonify({"error": "Meta diária inválida."}), 400
+    else:
         new_daily_goal = ch.daily_goal
 
-    goal_level_raw = data.get("goal_level", ch.goal_level)
-    try:
-        desired_goal_level = int(goal_level_raw) if goal_level_raw is not None and str(goal_level_raw).strip() != "" else None
-    except Exception:
-        return jsonify({"error": "Nível meta inválido."}), 400
 
+    # goal_level (pode vir ou não)
+    if "goal_level" in data and str(data.get("goal_level")).strip() != "":
+        try:
+            desired_goal_level = int(data.get("goal_level"))
+        except Exception:
+            return jsonify({"error": "Nível meta inválido."}), 400
+    else:
+        desired_goal_level = ch.goal_level
+
+
+    # Se goal_level não veio, mantém o atual; se estiver vazio no banco, cria um padrão
     if desired_goal_level is None:
         desired_goal_level = current_level + 10
 
+
     if desired_goal_level <= current_level:
         return jsonify({"error": "O nível meta deve ser maior que o nível atual do personagem."}), 400
+
 
     try:
         new_xp_goal = int(xp_for_level(desired_goal_level))
     except Exception:
         return jsonify({"error": "Nível meta inválido (não existe na tabela)."}), 400
 
+
     ch.char_name = new_name
-    ch.xp_start = new_xp_start
     ch.daily_goal = new_daily_goal
     ch.goal_level = desired_goal_level
     ch.xp_goal = new_xp_goal
 
+
     if (old_name or "").strip().lower() != (new_name or "").strip().lower():
         XpLog.query.filter_by(character_id=ch.id).delete()
+
 
     db.session.commit()
     return jsonify({"status": "saved"})
 
 
+
 # =========================
-# Chat (página + histórico REST)
+# Chat (página + histórico REST) - DESATIVADO (Opção B)
 # =========================
 @app.route("/chat")
 @login_required
 def chat():
-    return render_template("chat.html")
+    return redirect(url_for("xp_tracker"))
 
 
 @app.route("/chat/api/messages", methods=["GET"])
 @login_required
 def chat_messages_list():
-    limit = request.args.get("limit", "80")
-    try:
-        limit = max(1, min(200, int(limit)))
-    except Exception:
-        limit = 80
+    return jsonify({"error": "Chat desativado."}), 404
 
-    rows = (
-        ChatMessage.query
-        .filter(ChatMessage.channel_type == "global")
-        .order_by(ChatMessage.id.desc())
-        .limit(limit)
-        .all()
-    )
-    rows.reverse()
-    return jsonify([serialize_chat_row(r) for r in rows])
 
 
 # =========================
@@ -721,21 +846,26 @@ def socket_connect():
     emit("status", {"ok": True})
 
 
+
 @socketio.on("chat_send")
 def socket_chat_send(data):
     if not current_user.is_authenticated:
         return
 
+
     text = (data or {}).get("text", "")
     text = (text or "").strip()
+
 
     if not text:
         emit("chat_error", {"error": "Mensagem vazia."})
         return
 
+
     if len(text) > 500:
         emit("chat_error", {"error": "Mensagem muito longa (máx 500)."})
         return
+
 
     msg = ChatMessage(
         username=current_user.username,
@@ -746,10 +876,10 @@ def socket_chat_send(data):
     db.session.add(msg)
     db.session.commit()
 
-    payload = serialize_chat_row(msg)
 
-    # broadcast para todos conectados
-    emit("chat_message", payload, broadcast=True)  # broadcast=True é o padrão pro "todos". [web:232]
+    payload = serialize_chat_row(msg)
+    emit("chat_message", payload, broadcast=True)
+
 
 
 @app.route("/bestiary")
@@ -758,6 +888,6 @@ def bestiary():
     return render_template("bestiary.html")
 
 
+
 if __name__ == "__main__":
-    # Em produção, não use app.run(); use gunicorn+eventlet (abaixo).
     socketio.run(app, debug=True)
